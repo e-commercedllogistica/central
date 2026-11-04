@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central DLL</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://awcdrnlyehwmfgderwsl.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<style>
+:root {
+  --fundo: #f3f5f9; --cartao: #ffffff; --texto: #1d2333; --suave: #5d6678; --linha: #dfe4ec;
+  --marca: #2d3357; --azul: #007fb8; --azul-claro: #e3f3fb;
+  --ok: #24803c; --ok-claro: #e4f4e8; --aviso: #a86300; --aviso-claro: #fdf1dd;
+  --erro: #c02626; --erro-claro: #fce8e8; --neutro: #6c7486; --neutro-claro: #eceff4;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --grade: #e1e0d9; --eixo: #c3c2b7; --mudo: #6f6e69;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #12151d; --cartao: #1c202b; --texto: #e8ebf2; --suave: #a2a9b9; --linha: #2f3545;
+    --marca: #262b4a; --azul: #4db8e8; --azul-claro: #16323f;
+    --ok: #62c97b; --ok-claro: #17301e; --aviso: #eeb056; --aviso-claro: #38290f;
+    --erro: #f27b7b; --erro-claro: #3a1a1a; --neutro: #a2a9b9; --neutro-claro: #2a2f3c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --grade: #2c303b; --eixo: #424857; --mudo: #989ba3;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 "Segoe UI", system-ui, Arial, sans-serif; }
+header { background: var(--marca); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 19px; font-weight: 600; }
+header .sub { font-size: 13px; opacity: .85; }
+#conta { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+nav { background: var(--cartao); border-bottom: 1px solid var(--linha); position: sticky; top: 0; z-index: 5; overflow-x: auto; }
+nav > div { display: flex; gap: 2px; max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+nav button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 11px 8px; color: var(--suave); white-space: nowrap; }
+nav button:hover:not(:disabled) { color: var(--texto); }
+nav button[aria-selected="true"] { color: var(--azul); border-bottom-color: var(--azul); }
+nav .conta-aba { font-size: 11.5px; background: var(--erro-claro); color: var(--erro); border-radius: 99px; padding: 0 6px; margin-left: 5px; }
+.faixa-demo { background: var(--aviso-claro); color: var(--aviso); padding: 7px 24px; font-weight: 600; }
+main { max-width: 1240px; margin: 0 auto; padding: 18px 24px 40px; display: grid; gap: 16px; }
+.metade { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 860px) { .metade { grid-template-columns: minmax(0, 1fr); } main { padding: 14px 16px 30px; } header { padding: 12px 16px; } .faixa-demo { padding: 7px 16px; } #conta { margin-left: 0; } }
+.cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+h2 small { font-weight: 400; color: var(--suave); font-size: 12.5px; margin-left: 6px; }
+button { font: inherit; font-weight: 600; border: 1px solid var(--linha); background: var(--cartao); color: var(--texto); border-radius: 7px; padding: 7px 13px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--azul); color: var(--azul); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+button.principal { background: var(--azul); border-color: var(--azul); color: #fff; padding: 8px 18px; }
+@media (prefers-color-scheme: dark) { button.principal { color: #06222e; } }
+button.principal:hover:not(:disabled) { filter: brightness(1.08); color: #fff; }
+button.perigo { color: var(--erro); }
+button.mini { padding: 3px 10px; font-size: 12.5px; }
+button.clara { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+button.clara:hover:not(:disabled) { color: #fff; border-color: #fff; }
+button.link { border: 0; background: none; padding: 0; color: var(--azul); font-weight: 400; }
+.suave { color: var(--suave); }
+.selo { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.selo.ok { background: var(--ok-claro); color: var(--ok); }
+.selo.aviso { background: var(--aviso-claro); color: var(--aviso); }
+.selo.erro { background: var(--erro-claro); color: var(--erro); }
+.selo.neutro { background: var(--neutro-claro); color: var(--neutro); }
+.caixa { padding: 8px 12px; border-radius: 7px; margin-top: 10px; background: var(--erro-claro); color: var(--erro); }
+.caixa.ok { background: var(--ok-claro); color: var(--ok); }
+.nota { font-size: 13px; color: var(--aviso); background: var(--aviso-claro); border-radius: 7px; padding: 6px 12px; }
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.numero { border: 1px solid var(--linha); border-radius: 8px; padding: 10px 12px; }
+.numero .rot { color: var(--suave); font-size: 12.5px; }
+.numero .val { font-size: 22px; font-weight: 600; line-height: 1.25; }
+.numero .sub { font-size: 12.5px; color: var(--suave); }
+.numero .val.bom { color: var(--ok); } .numero .val.ruim { color: var(--erro); }
+.controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.controles input, .controles select { font: inherit; padding: 6px 9px; border: 1px solid var(--linha); border-radius: 7px; background: var(--cartao); color: var(--texto); max-width: 100%; }
+.controles input { width: 220px; }
+.controles .conta-linhas { margin-left: auto; color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tabela { overflow-x: auto; }
+.tabela.alta { max-height: 68vh; overflow-y: auto; }
+.tabela.alta th { position: sticky; top: 0; background: var(--cartao); z-index: 1; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 12.5px; font-weight: 600; color: var(--suave); border-bottom: 1px solid var(--linha); padding: 5px 8px; white-space: nowrap; }
+th.ordena { cursor: pointer; user-select: none; }
+th.ordena:hover { color: var(--azul); }
+td { border-bottom: 1px solid var(--linha); padding: 6px 8px; vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.quebra { min-width: 200px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chips button[aria-pressed="true"] { border-color: var(--azul); color: var(--azul); background: var(--azul-claro); }
+.vazio { color: var(--suave); padding: 6px 0; }
+.grafico { position: relative; }
+.grafico svg { display: block; width: 100%; }
+.grafico text { font: 12px "Segoe UI", system-ui, Arial, sans-serif; font-variant-numeric: tabular-nums; fill: var(--mudo); }
+.grafico text.forte { fill: var(--texto); font-weight: 600; }
+.grafico .alvo { fill: transparent; outline: none; }
+.grafico .alvo:hover, .grafico .alvo:focus { fill: var(--neutro-claro); fill-opacity: .55; }
+.legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--suave); margin-bottom: 6px; }
+.legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.dica { position: absolute; pointer-events: none; background: var(--marca); color: #fff; border-radius: 7px; padding: 7px 10px; font-size: 12.5px; white-space: nowrap; display: none; z-index: 3; font-variant-numeric: tabular-nums; }
+.tela { display: grid; place-items: center; padding: 40px 16px; }
+.tela .cartao { width: min(420px, 100%); }
+.tela label { display: block; margin-top: 10px; }
+.tela input { display: block; width: 100%; padding: 8px 10px; margin-top: 4px; font: inherit; border: 1px solid var(--linha); border-radius: 7px; background: var(--cartao); color: var(--texto); }
+.tela .acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.pessoa { border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; }
+.pessoa + .pessoa { margin-top: 10px; }
+.pessoa-topo { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.modulos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; margin: 10px 0; }
+.modulos label { display: flex; gap: 6px; align-items: center; }
+.resumo-texto { white-space: pre-wrap; background: var(--fundo); border-radius: 7px; padding: 12px; }
+#aviso { position: fixed; right: 18px; bottom: 18px; background: var(--marca); color: #fff; padding: 10px 16px; border-radius: 8px; display: none; max-width: 420px; box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 20; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Central DLL</h1>
+  <span class="sub" id="subtitulo">DLL Logística</span>
+  <div id="conta"></div>
+</header>
+<nav id="barraAbas" hidden aria-label="Módulos"><div id="abas" role="tablist"></div></nav>
+<div class="faixa-demo" id="faixaDemo" hidden>DEMONSTRAÇÃO: todos os nomes, pacotes e valores desta tela são inventados.</div>
+<div id="raiz"></div>
+<div id="aviso" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+// Esta chave é pública de propósito: quem controla o acesso são as regras do banco (RLS).
+const URL_PROJETO = "https://awcdrnlyehwmfgderwsl.supabase.co";
+const CHAVE_PUBLICA = "sb_publishable_elSayRrK9BFBe0VuWtKaJg_fN-B5h4C";
+const banco = window.supabase.createClient(URL_PROJETO, CHAVE_PUBLICA);
+
+const MODULOS = [
+  ["inicio", "Início", "Números gerais e evolução"], ["fila", "Fila do Dia", "O que precisa de ação hoje"],
+  ["faltantes", "Faltantes", "A salvar, perdidos e recuperados"], ["agregacao", "Agregação", "Pendências e D+1"],
+  ["alertas", "Alertas", "Faltante caro ou suspeito"], ["placar", "Placar", "Ranking dos XPTs (interno)"],
+  ["motoristas", "Motoristas", "Histórico e sinais (interno)"], ["enderecos", "Endereços", "Endereços com problema"],
+  ["relatorio", "Relatório", "Resumo da semana"],
+];
+const INTERNOS = ["placar", "motoristas"];
+
+const el = id => document.getElementById(id);
+const moeda = v => (Number(v) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const inteiro = v => Number(v || 0).toLocaleString("pt-BR");
+const decimal = v => v === "" || v === null || v === undefined ? "" : typeof v === "number" ? v.toLocaleString("pt-BR") : String(v);
+// Sempre por textContent: nome de produto e de pessoa vêm dos dados.
+function novo(tag, props = {}, ...filhos) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n[k] = v; else if (v !== false && v !== null) n.setAttribute(k, v === true ? "" : v);
+  }
+  n.append(...filhos);
+  return n;
+}
+function limpar(n, ...filhos) { n.replaceChildren(...filhos); }
+function avisar(texto) {
+  const a = el("aviso"); a.textContent = texto; a.style.display = "block";
+  clearTimeout(avisar.t); avisar.t = setTimeout(() => a.style.display = "none", 4000);
+}
+async function copiar(texto, recado) {
+  try { await navigator.clipboard.writeText(texto); avisar(recado); } catch (e) { avisar("Não consegui copiar."); }
+}
+function traduzirErro(erro) {
+  const m = String(erro && erro.message || erro || "");
+  if (/invalid login/i.test(m)) return "E-mail ou senha incorretos.";
+  if (/not confirmed/i.test(m)) return "Confirme seu e-mail primeiro: o link está na sua caixa de entrada.";
+  if (/already registered/i.test(m)) return "Esse e-mail já tem cadastro. Tente entrar.";
+  if (/rate limit|too many|seconds/i.test(m)) return "Muitas tentativas. Espere alguns minutos e tente de novo.";
+  if (/at least|password should/i.test(m)) return "A senha precisa de pelo menos 8 caracteres.";
+  return "Não deu certo. Tente de novo em instantes.";
+}
+
+// ------------------------------------------------------------ telas de conta
+function telaFormulario(titulo, texto, campos, rotulo, enviar, rodape = []) {
+  el("barraAbas").hidden = true; el("faixaDemo").hidden = true;
+  const erro = novo("div", { class: "caixa", role: "alert", hidden: true });
+  const botao = novo("button", { class: "principal", type: "submit", text: rotulo });
+  const form = novo("form", { class: "cartao", onsubmit: async e => {
+    e.preventDefault(); erro.hidden = true; botao.disabled = true;
+    const falha = await enviar();
+    botao.disabled = false;
+    if (falha) { erro.className = "caixa"; erro.textContent = falha; erro.hidden = false; }
+  } }, novo("h2", { text: titulo }), novo("p", { class: "suave", style: "margin:0", text: texto }), ...campos, erro, novo("div", { class: "acoes" }, botao, ...rodape));
+  limpar(el("raiz"), novo("div", { class: "tela" }, form));
+}
+function campo(id, rotulo, tipo, completar, extra = {}) {
+  return novo("label", {}, rotulo, novo("input", { id, type: tipo, autocomplete: completar, required: true, ...extra }));
+}
+function telaMensagem(titulo, texto, botoes = []) {
+  el("barraAbas").hidden = true; el("faixaDemo").hidden = true;
+  limpar(el("raiz"), novo("div", { class: "tela" }, novo("div", { class: "cartao" }, novo("h2", { text: titulo }), novo("p", { class: "suave", style: "margin:0", text: texto }), novo("div", { class: "acoes" }, ...botoes))));
+}
+const link = (texto, acao) => novo("button", { class: "link", type: "button", text: texto, onclick: acao });
+
+function telaEntrar() {
+  limpar(el("conta"));
+  telaFormulario("Entrar", "Use o e-mail e a senha do seu cadastro.",
+    [campo("cEmail", "E-mail", "email", "username"), campo("cSenha", "Senha", "password", "current-password")], "Entrar",
+    async () => {
+      const { error } = await banco.auth.signInWithPassword({ email: el("cEmail").value.trim(), password: el("cSenha").value });
+      if (error) return traduzirErro(error);
+      iniciar();
+    }, [link("Criar cadastro", telaCadastro), link("Esqueci a senha", telaEsqueci)]);
+}
+function telaCadastro() {
+  telaFormulario("Criar cadastro", "Depois de criar, o responsável precisa aprovar seu acesso.",
+    [campo("cNome", "Nome e sobrenome", "text", "name", { maxlength: 60, minlength: 3 }), campo("cEmail", "E-mail", "email", "username"),
+     campo("cSenha", "Senha (pelo menos 8 caracteres)", "password", "new-password", { minlength: 8 })], "Criar cadastro",
+    async () => {
+      const { data, error } = await banco.auth.signUp({ email: el("cEmail").value.trim(), password: el("cSenha").value,
+        options: { data: { nome: el("cNome").value.trim() }, emailRedirectTo: location.origin + location.pathname } });
+      if (error) return traduzirErro(error);
+      if (data.session) return iniciar();
+      telaMensagem("Confira seu e-mail", "Enviamos um link de confirmação. Depois de confirmar, é só entrar e aguardar a aprovação.", [link("Voltar para entrar", telaEntrar)]);
+    }, [link("Já tenho cadastro", telaEntrar)]);
+}
+function telaEsqueci() {
+  telaFormulario("Esqueci a senha", "Enviamos um link para você escolher outra.", [campo("cEmail", "E-mail", "email", "username")], "Enviar link",
+    async () => {
+      const { error } = await banco.auth.resetPasswordForEmail(el("cEmail").value.trim(), { redirectTo: location.origin + location.pathname });
+      if (error) return traduzirErro(error);
+      telaMensagem("Confira seu e-mail", "Se esse e-mail tiver cadastro, o link chega em instantes.", [link("Voltar para entrar", telaEntrar)]);
+    }, [link("Voltar", telaEntrar)]);
+}
+function telaNovaSenha() {
+  telaFormulario("Escolha a nova senha", "Pelo menos 8 caracteres.", [campo("cSenha", "Nova senha", "password", "new-password", { minlength: 8 })], "Salvar",
+    async () => {
+      const { error } = await banco.auth.updateUser({ password: el("cSenha").value });
+      if (error) return traduzirErro(error);
+      avisar("Senha alterada."); iniciar();
+    });
+}
+const botaoSair = () => novo("button", { class: "mini clara", text: "Sair", onclick: async () => { await banco.auth.signOut(); location.hash = ""; telaEntrar(); } });
+
+// ------------------------------------------------------------ início da sessão
+let PERFIL = null, DADOS = {}, abaAtual = null, ABAS = [];
+async function iniciar() {
+  const { data: { session } } = await banco.auth.getSession();
+  if (!session) return telaEntrar();
+  const { data: perfil, error } = await banco.from("perfis").select("*").eq("id", session.user.id).single();
+  if (error || !perfil) return telaMensagem("Não consegui carregar seu cadastro", "Tente de novo em instantes.", [novo("button", { text: "Tentar de novo", onclick: iniciar }), botaoSair()]);
+  PERFIL = perfil;
+  el("subtitulo").textContent = `DLL Logística · ${perfil.nome || perfil.email}`;
+  limpar(el("conta"), botaoSair());
+  if (perfil.status === "pendente") return telaMensagem("Aguardando aprovação", "Seu cadastro foi recebido. O responsável precisa aprovar e escolher o que você vai acessar.", [novo("button", { text: "Verificar de novo", onclick: iniciar })]);
+  if (perfil.status === "bloqueado") return telaMensagem("Acesso bloqueado", "Fale com o responsável pela plataforma.");
+  await carregarDados();
+}
+async function carregarDados() {
+  const { data, error } = await banco.from("dados_modulo").select("modulo, conteudo, demonstracao, atualizado_em");
+  if (error) return telaMensagem("Não consegui carregar os dados", "Tente de novo em instantes.", [novo("button", { text: "Tentar de novo", onclick: iniciar })]);
+  DADOS = Object.fromEntries(data.map(d => [d.modulo, d]));
+  ABAS = MODULOS.filter(m => DADOS[m[0]]).map(m => [m[0], m[1]]);
+  if (PERFIL.admin) ABAS.push(["admin", "Administração"]);
+  if (!ABAS.length) return telaMensagem("Nenhum módulo liberado ainda", "O responsável ainda não liberou nenhum módulo para você.", [novo("button", { text: "Verificar de novo", onclick: iniciar })]);
+  el("faixaDemo").hidden = !data.some(d => d.demonstracao);
+  el("barraAbas").hidden = false;
+  limpar(el("abas"), ...ABAS.map(([c, t]) => novo("button", { role: "tab", id: "aba-" + c, text: t, onclick: () => { location.hash = c; } })));
+  mostrarAba();
+  if (PERFIL.admin) contarPendentes();
+}
+function mostrarAba() {
+  if (!PERFIL || !ABAS.length) return;
+  const pedida = location.hash.slice(1);
+  abaAtual = ABAS.some(a => a[0] === pedida) ? pedida : ABAS[0][0];
+  for (const [c] of ABAS) el("aba-" + c).setAttribute("aria-selected", c === abaAtual);
+  const raiz = novo("main");
+  limpar(el("raiz"), raiz);
+  TELAS[abaAtual](raiz, DADOS[abaAtual] && DADOS[abaAtual].conteudo);
+  if (DADOS[abaAtual] && !DADOS[abaAtual].demonstracao) raiz.prepend(novo("div", { class: "suave", text: "Atualizado em " + new Date(DADOS[abaAtual].atualizado_em).toLocaleString("pt-BR") }));
+}
+window.addEventListener("hashchange", mostrarAba);
+let largura = window.innerWidth;
+window.addEventListener("resize", () => { if (window.innerWidth === largura) return; largura = window.innerWidth; clearTimeout(mostrarAba.t); mostrarAba.t = setTimeout(mostrarAba, 200); });
+
+// ------------------------------------------------------------ peças das telas
+const cartao = (titulo, ...filhos) => novo("section", { class: "cartao" }, novo("h2", { text: titulo }), ...filhos);
+function numero(rot, val, sub, classe = "") {
+  return novo("div", { class: "numero" }, novo("div", { class: "rot", text: rot }), novo("div", { class: "val " + classe, text: val }), novo("div", { class: "sub", text: sub || "" }));
+}
+const NIVEL = t => { const s = String(t); return /🔴|🚨/.test(s) ? "erro" : /🟠|💎/.test(s) ? "aviso" : "neutro"; };
+function chaveOrdem(v, tipo) {
+  if (tipo === "data") { const m = String(v).match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? +(m[3] + m[2] + m[1]) : 0; }
+  if (tipo === "num" || tipo === "moeda") return typeof v === "number" ? v : -Infinity;
+  return String(v ?? "").toLowerCase();
+}
+function celula(v, c) {
+  if (c.tipo === "selo") return novo("td", {}, v ? novo("span", { class: "selo " + NIVEL(v), text: v }) : "");
+  if (c.tipo === "moeda") return novo("td", { class: "num", text: moeda(v) });
+  if (c.tipo === "num") return novo("td", { class: "num", text: decimal(v) });
+  return novo("td", { text: v ?? "", class: c.quebra ? "quebra" : "" });
+}
+function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
+  if (!linhas.length) return novo("div", { class: "vazio", text: vazio });
+  const st = { busca: "", filtros: {}, ord: null, dir: 1 };
+  const caixa = novo("div", { class: "tabela alta" }), conta = novo("span", { class: "conta-linhas" });
+  const iId = colunas.findIndex(c => c.t === "ID"), iMoeda = colunas.findIndex(c => c.tipo === "moeda");
+  const filtradas = () => {
+    let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || String(r[i]) === st.filtros[i]));
+    if (st.busca) { const b = st.busca.toLowerCase(); l = l.filter(r => r.some(v => String(v ?? "").toLowerCase().includes(b))); }
+    if (st.ord !== null) { const t = colunas[st.ord].tipo; l = [...l].sort((a, b) => { const x = chaveOrdem(a[st.ord], t), y = chaveOrdem(b[st.ord], t); return x < y ? -st.dir : x > y ? st.dir : 0; }); }
+    return l;
+  };
+  const desenhar = () => {
+    const l = filtradas();
+    let txt = l.length === linhas.length ? `${inteiro(l.length)} linhas` : `${inteiro(l.length)} de ${inteiro(linhas.length)}`;
+    if (iMoeda >= 0) txt += " · " + moeda(l.reduce((s, r) => s + (Number(r[iMoeda]) || 0), 0));
+    conta.textContent = txt;
+    const cab = novo("tr", {}, ...colunas.map((c, i) => novo("th", { text: c.t + (st.ord === i ? (st.dir > 0 ? " ▲" : " ▼") : ""), class: "ordena" + (c.tipo === "num" || c.tipo === "moeda" ? " num" : ""),
+      onclick: () => { if (st.ord === i) st.dir = -st.dir; else { st.ord = i; st.dir = c.tipo === "num" || c.tipo === "moeda" ? -1 : 1; } desenhar(); } })));
+    limpar(caixa, novo("table", {}, novo("thead", {}, cab), novo("tbody", {}, ...l.slice(0, 1000).map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c)))))));
+  };
+  const busca = novo("input", { type: "search", placeholder: "Filtrar...", "aria-label": "Filtrar a tabela", oninput: () => { st.busca = busca.value.trim(); desenhar(); } });
+  const controles = novo("div", { class: "controles" }, busca);
+  colunas.forEach((c, i) => {
+    if (!c.filtro) return;
+    const valores = [...new Set(linhas.map(r => String(r[i])).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    const sel = novo("select", { "aria-label": c.t, onchange: () => { st.filtros[i] = sel.value; desenhar(); } }, novo("option", { value: "", text: c.t + ": todos" }), ...valores.map(v => novo("option", { value: v, text: v })));
+    controles.append(sel);
+  });
+  if (iId >= 0) controles.append(novo("button", { class: "mini", text: "Copiar IDs", onclick: () => { const ids = filtradas().map(r => r[iId]); copiar(ids.join("\n"), `${inteiro(ids.length)} IDs copiados.`); } }));
+  controles.append(conta);
+  desenhar();
+  return novo("div", {}, controles, caixa);
+}
+function tabelaFixa(colunas, linhas) {
+  return novo("div", { class: "tabela" }, novo("table", {},
+    novo("thead", {}, novo("tr", {}, ...colunas.map(c => novo("th", { text: c.t, class: c.tipo === "num" || c.tipo === "moeda" ? "num" : "" })))),
+    novo("tbody", {}, ...linhas.map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c)))))));
+}
+
+// ------------------------------------------------------------ gráficos
+const NS = "http://www.w3.org/2000/svg";
+function svg(tag, props = {}, texto) { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(props)) n.setAttribute(k, v); if (texto !== undefined) n.textContent = texto; return n; }
+function escalaBonita(max) {
+  if (max <= 0) return [0, 1];
+  const passo0 = max / 4, base = 10 ** Math.floor(Math.log10(passo0)), r = passo0 / base;
+  const passo = (r <= 1 ? 1 : r <= 2 ? 2 : r <= 2.5 ? 2.5 : r <= 5 ? 5 : 10) * base;
+  const marcas = [];
+  for (let v = 0; v < max + passo * .999; v += passo) marcas.push(+v.toFixed(6));
+  return marcas;
+}
+const abreviar = v => v >= 1000 ? (v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil" : v.toLocaleString("pt-BR");
+function quadro(alvo, series, altura) {
+  const L = Math.max(alvo.clientWidth, 280);
+  const q = novo("div", { class: "grafico" }), s = svg("svg", { viewBox: `0 0 ${L} ${altura}`, height: altura, role: "img" }), dica = novo("div", { class: "dica" });
+  const partes = [q];
+  if (series.length > 1) partes.unshift(novo("div", { class: "legenda" }, ...series.map(x => novo("span", {}, novo("i", { style: `background:var(${x.cor})` }), x.nome))));
+  q.append(s, dica);
+  limpar(alvo, ...partes);
+  return { L, s, mostrar: (x, y, linhas) => { limpar(dica, ...linhas.map(t => novo("div", { text: t }))); dica.style.display = "block"; const w = dica.offsetWidth; dica.style.left = Math.max(0, Math.min(L - w, x - w / 2)) + "px"; dica.style.top = Math.max(0, y - dica.offsetHeight - 8) + "px"; }, esconder: () => { dica.style.display = "none"; } };
+}
+function graficoLinhas(alvo, rotulos, series) {
+  const altura = 240, topo = 10, base = 26, esq = 42, dir = 56;
+  const q = quadro(alvo, series, altura), larg = q.L - esq - dir, alt = altura - topo - base;
+  const marcas = escalaBonita(Math.max(...series.flatMap(x => x.valores))), maxY = marcas[marcas.length - 1];
+  const X = i => esq + (rotulos.length > 1 ? i * larg / (rotulos.length - 1) : larg / 2), Y = v => topo + alt - v * alt / maxY;
+  for (const m of marcas) { q.s.append(svg("line", { x1: esq, x2: esq + larg, y1: Y(m), y2: Y(m), stroke: m === 0 ? "var(--eixo)" : "var(--grade)" })); q.s.append(svg("text", { x: esq - 6, y: Y(m) + 4, "text-anchor": "end" }, abreviar(m))); }
+  const pulo = Math.ceil(rotulos.length / Math.max(2, Math.floor(larg / 62)));
+  rotulos.forEach((r, i) => { if ((rotulos.length - 1 - i) % pulo === 0) q.s.append(svg("text", { x: X(i), y: altura - 7, "text-anchor": "middle" }, r)); });
+  for (const x of series) q.s.append(svg("path", { d: x.valores.map((v, i) => `${i ? "L" : "M"}${X(i)} ${Y(v)}`).join(""), fill: "none", stroke: `var(${x.cor})`, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const fim = rotulos.length - 1;
+  const fins = series.map(x => ({ v: x.valores[fim], y: Y(x.valores[fim]) + 4 })).sort((a, b) => a.y - b.y);
+  fins.forEach((f, i) => { if (i && f.y - fins[i - 1].y < 14) f.y = fins[i - 1].y + 14; q.s.append(svg("text", { x: X(fim) + 8, y: f.y, class: "forte" }, inteiro(f.v))); });
+  const guia = svg("line", { y1: topo, y2: topo + alt, stroke: "var(--eixo)", visibility: "hidden" });
+  const pontos = series.map(x => svg("circle", { r: 4.5, fill: `var(${x.cor})`, stroke: "var(--cartao)", "stroke-width": 2, visibility: "hidden" }));
+  q.s.append(guia, ...pontos);
+  const faixa = rotulos.length > 1 ? larg / (rotulos.length - 1) : larg;
+  rotulos.forEach((r, i) => {
+    const hit = svg("rect", { class: "alvo", x: X(i) - faixa / 2, y: topo, width: faixa, height: alt, tabindex: 0, "aria-label": r + ": " + series.map(x => `${x.nome} ${x.valores[i]}`).join(", ") });
+    hit.style.fill = "transparent";
+    const entra = () => { guia.setAttribute("x1", X(i)); guia.setAttribute("x2", X(i)); guia.setAttribute("visibility", "visible"); series.forEach((x, k) => { pontos[k].setAttribute("cx", X(i)); pontos[k].setAttribute("cy", Y(x.valores[i])); pontos[k].setAttribute("visibility", "visible"); }); q.mostrar(X(i), Math.min(...series.map(x => Y(x.valores[i]))), [r, ...series.map(x => `${x.nome}: ${inteiro(x.valores[i])}`)]); };
+    const sai = () => { guia.setAttribute("visibility", "hidden"); pontos.forEach(p => p.setAttribute("visibility", "hidden")); q.esconder(); };
+    hit.addEventListener("mouseenter", entra); hit.addEventListener("focus", entra); hit.addEventListener("mouseleave", sai); hit.addEventListener("blur", sai);
+    q.s.append(hit);
+  });
+}
+function graficoBarras(alvo, rotulos, series, fmt, fmtEixo) {
+  const altura = 230, topo = 10, base = 26, esq = 72, dir = 6;
+  const q = quadro(alvo, series, altura), larg = q.L - esq - dir, alt = altura - topo - base;
+  const marcas = escalaBonita(Math.max(...series.flatMap(x => x.valores))), maxY = marcas[marcas.length - 1], Y = v => topo + alt - v * alt / maxY;
+  for (const m of marcas) { q.s.append(svg("line", { x1: esq, x2: esq + larg, y1: Y(m), y2: Y(m), stroke: m === 0 ? "var(--eixo)" : "var(--grade)" })); q.s.append(svg("text", { x: esq - 6, y: Y(m) + 4, "text-anchor": "end" }, fmtEixo(m))); }
+  const grupo = larg / rotulos.length, n = series.length, barra = Math.min(22, Math.max(3, (grupo * .72 - 2 * (n - 1)) / n));
+  const pulo = Math.ceil(rotulos.length / Math.max(2, Math.floor(larg / 62)));
+  rotulos.forEach((r, i) => {
+    const cx = esq + grupo * (i + .5), ini = cx - (n * barra + 2 * (n - 1)) / 2;
+    const hit = svg("rect", { class: "alvo", x: esq + grupo * i, y: topo, width: grupo, height: alt, tabindex: 0, "aria-label": r + ": " + series.map(x => `${x.nome} ${fmt(x.valores[i])}`).join(", ") });
+    const entra = () => q.mostrar(cx, Math.min(...series.map(x => Y(x.valores[i]))), [r, ...series.map(x => (n > 1 ? x.nome + ": " : "") + fmt(x.valores[i]))]);
+    hit.addEventListener("mouseenter", entra); hit.addEventListener("focus", entra); hit.addEventListener("mouseleave", q.esconder); hit.addEventListener("blur", q.esconder);
+    q.s.append(hit);
+    series.forEach((x, k) => { const v = x.valores[i]; if (!v) return; const px = ini + k * (barra + 2), y = Y(v), raio = Math.min(4, barra / 2, topo + alt - y);
+      q.s.append(svg("path", { fill: `var(${x.cor})`, "pointer-events": "none", d: `M${px} ${topo + alt}V${y + raio}Q${px} ${y} ${px + raio} ${y}H${px + barra - raio}Q${px + barra} ${y} ${px + barra} ${y + raio}V${topo + alt}Z` })); });
+    if ((rotulos.length - 1 - i) % pulo === 0) q.s.append(svg("text", { x: cx, y: altura - 7, "text-anchor": "middle" }, r));
+  });
+}
+
+// ------------------------------------------------------------ módulos
+let semanaPlacar = 0, semanaRel = 0;
+function textoRelatorio(d, s) {
+  return [`*DLL Logística - semana de ${s.nome}*`, "", `💰 Total recuperado: ${moeda(d.recuperado_total)} em ${inteiro(d.recuperados_total)} faltantes`, "",
+    "Na semana:", `Insucessos: ${inteiro(s.insucessos)}`, `Novos faltantes: ${inteiro(s.faltantes)} (${moeda(s.r_faltantes)})`, `Recuperados: ${inteiro(s.recuperados)} (${moeda(s.r_recuperado)})`,
+    `Perdidos: ${inteiro(s.perdidos)} (${moeda(s.r_perdido)})`, `Agregado no D+1: ${decimal(s.pct_d1)}%`, "", `Ainda a salvar: ${inteiro(d.a_salvar)} faltantes (${moeda(d.r_salvar)})`].join("\n");
+}
+const TELAS = {
+  inicio(r, d) {
+    const graf = novo("div");
+    const ev = d.evolucao, u = ev[ev.length - 1], a = ev[ev.length - 2];
+    const dif = (t, i) => { const v = u[i] - a[i]; return `${t} ${v > 0 ? "+" : ""}${inteiro(v)}`; };
+    r.append(cartao("Resultados", novo("div", { class: "numeros" },
+      numero("Recuperado no total", moeda(d.recuperado_total), `${inteiro(d.recuperados_total)} faltantes localizados`, "bom"),
+      numero("A salvar", inteiro(d.a_salvar), moeda(d.r_salvar)), numero("Perdidos", inteiro(d.perdidos), moeda(d.r_perdido), d.perdidos ? "ruim" : ""),
+      numero("Fila do dia", inteiro(d.fila)), numero("Agregação pendente", inteiro(d.agregacao)), numero("Agregado no D+1", decimal(d.semana.pct_d1) + "%", "última semana")),
+      novo("div", { class: "suave", style: "margin-top:10px;font-size:13px", text: `De ${a[0]} para ${u[0]}: ${dif("a salvar", 1)} · ${dif("perdidos", 2)} · ${dif("agregação", 3)}` })),
+      cartao("Evolução diária", graf));
+    graficoLinhas(graf, ev.map(l => l[0]), [{ nome: "Faltantes a salvar", cor: "--s1", valores: ev.map(l => l[1]) }, { nome: "Perdidos", cor: "--s2", valores: ev.map(l => l[2]) }, { nome: "Agregação pendente", cor: "--s3", valores: ev.map(l => l[3]) }]);
+  },
+  fila(r, d) {
+    r.append(cartao("Fila do Dia", tabelaViva([{ t: "Prioridade", tipo: "selo", filtro: true }, { t: "XPT", filtro: true }, { t: "ID" }, { t: "Categoria", filtro: true }, { t: "Desde", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Prazo / risco", quebra: true }, { t: "Valor", tipo: "moeda" }], d, "Fila vazia.")));
+  },
+  faltantes(r, d) {
+    const graf = novo("div");
+    const colQ = [{ t: "Quinzena" }, { t: "A salvar", tipo: "num" }, { t: "R$ a salvar", tipo: "moeda" }, { t: "Perdidos", tipo: "num" }, { t: "R$ perdido", tipo: "moeda" }, { t: "Recuperados", tipo: "num" }, { t: "R$ recuperado", tipo: "moeda" }];
+    r.append(cartao("Por quinzena", graf, novo("div", { style: "margin-top:10px" }, tabelaFixa(colQ, d.quinzenas))),
+      cartao("Por XPT", tabelaFixa([{ t: "XPT" }, ...colQ.slice(1)], d.por_xpt)),
+      cartao("A salvar", tabelaViva([{ t: "XPT", filtro: true }, { t: "ID" }, { t: "Virou faltante", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }], d.lista)));
+    graficoBarras(graf, d.quinzenas.map(l => l[0]), [{ nome: "A salvar", cor: "--s1", valores: d.quinzenas.map(l => l[2]) }, { nome: "Perdido", cor: "--s2", valores: d.quinzenas.map(l => l[4]) }, { nome: "Recuperado", cor: "--s3", valores: d.quinzenas.map(l => l[6]) }], moeda, v => "R$ " + abreviar(v));
+  },
+  agregacao(r, d) {
+    const graf = novo("div");
+    r.append(novo("div", { class: "metade" }, cartao("Agregado no dia seguinte (D+1)", graf), cartao("Pendente por XPT", tabelaFixa([{ t: "XPT" }, ...d.acoes.map(t => ({ t, tipo: "num" }))], d.por_xpt))),
+      cartao("Pacotes pendentes", tabelaViva([{ t: "Ação", filtro: true }, { t: "XPT", filtro: true }, { t: "ID" }, { t: "Insucesso", tipo: "data" }, { t: "Motorista" }], d.lista)));
+    graficoBarras(graf, d.d1.map(l => l[0]), [{ nome: "% D+1", cor: "--s1", valores: d.d1.map(l => l[1]) }], v => decimal(v) + "%", v => v + "%");
+  },
+  alertas(r, d) {
+    r.append(cartao("Alertas de faltante caro ou suspeito", tabelaViva([{ t: "Nível", tipo: "selo", filtro: true }, { t: "Dia", tipo: "data" }, { t: "XPT", filtro: true }, { t: "ID" }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }], d.lista)));
+  },
+  placar(r, d) {
+    const corpo = novo("div"), chips = novo("div", { class: "chips" });
+    const desenhar = () => {
+      limpar(chips, ...d.semanas.map((s, i) => novo("button", { class: "mini", "aria-pressed": i === semanaPlacar ? "true" : "false", text: s.nome, onclick: () => { semanaPlacar = i; desenhar(); } })));
+      limpar(corpo, tabelaFixa([{ t: "Posição", tipo: "num" }, { t: "XPT" }, { t: "Nota", tipo: "num" }, { t: "D+1 %", tipo: "num" }, { t: "Faltantes por 100", tipo: "num" }, { t: "Insucessos", tipo: "num" }], d.semanas[semanaPlacar].linhas));
+    };
+    desenhar();
+    r.append(novo("div", { class: "nota", text: "Uso interno. Não compartilhar com os dispatchers." }), cartao("Placar semanal", chips, corpo));
+  },
+  motoristas(r, d) {
+    r.append(novo("div", { class: "nota", text: "Uso interno. Número alto é motivo para conferir, não é prova." }),
+      cartao("Motoristas", tabelaViva([{ t: "Motorista" }, { t: "XPT", filtro: true }, { t: "Insucessos", tipo: "num" }, { t: "Faltantes", tipo: "num" }, { t: "% faltante", tipo: "num" }, { t: "Perdidos", tipo: "num" }, { t: "R$ faltantes", tipo: "moeda" }], d.lista)));
+  },
+  enderecos(r, d) {
+    r.append(cartao("Endereços com insucesso repetido", tabelaViva([{ t: "Endereço", quebra: true }, { t: "Cidade", filtro: true }, { t: "XPT", filtro: true }, { t: "Pacotes", tipo: "num" }, { t: "Motivo mais comum", filtro: true, quebra: true }], d.lista)));
+  },
+  relatorio(r, d) {
+    const corpo = novo("div");
+    const desenhar = () => {
+      const s = d.semanas[semanaRel], texto = textoRelatorio(d, s);
+      limpar(corpo, novo("div", { class: "chips" }, ...d.semanas.map((x, i) => novo("button", { class: "mini", "aria-pressed": i === semanaRel ? "true" : "false", text: x.nome, onclick: () => { semanaRel = i; desenhar(); } }))),
+        novo("div", { class: "numeros" }, numero("Recuperado no total", moeda(d.recuperado_total), `${inteiro(d.recuperados_total)} faltantes`, "bom"), numero("Recuperados na semana", moeda(s.r_recuperado), `${inteiro(s.recuperados)} pacotes`, "bom"),
+          numero("Perdidos na semana", moeda(s.r_perdido), `${inteiro(s.perdidos)} pacotes`, s.perdidos ? "ruim" : ""), numero("Novos faltantes", inteiro(s.faltantes), moeda(s.r_faltantes)), numero("Insucessos", inteiro(s.insucessos)), numero("Agregado no D+1", decimal(s.pct_d1) + "%")),
+        novo("div", { class: "controles", style: "margin-top:14px" }, novo("button", { class: "principal", text: "Copiar resumo", onclick: () => copiar(texto, "Resumo copiado.") })), novo("div", { class: "resumo-texto", text: texto }));
+    };
+    desenhar();
+    r.append(cartao("Relatório da semana", corpo));
+  },
+  async admin(r) {
+    const caixa = novo("div", { text: "Carregando...", class: "vazio" });
+    r.append(novo("div", { class: "nota", text: "Só você vê esta tela. Quem você não aprovar não recebe nenhum dado." }), cartao("Pessoas", caixa));
+    desenharPessoas(caixa);
+  },
+};
+
+// ------------------------------------------------------------ administração
+async function buscarPessoas() {
+  const { data, error } = await banco.from("perfis").select("*").order("criado_em", { ascending: false });
+  return error ? null : data;
+}
+async function contarPendentes() {
+  const lista = await buscarPessoas();
+  const n = lista ? lista.filter(p => p.status === "pendente").length : 0;
+  const b = el("aba-admin");
+  if (b) limpar(b, "Administração", ...(n ? [novo("span", { class: "conta-aba", text: inteiro(n) })] : []));
+}
+const SELO_STATUS = { pendente: ["aviso", "Aguardando aprovação"], aprovado: ["ok", "Aprovado"], bloqueado: ["erro", "Bloqueado"] };
+async function desenharPessoas(caixa) {
+  const lista = await buscarPessoas();
+  if (!lista) return limpar(caixa, novo("div", { class: "caixa", text: "Não consegui carregar a lista." }));
+  caixa.className = "";
+  caixa.textContent = "";
+  const ordem = { pendente: 0, aprovado: 1, bloqueado: 2 };
+  lista.sort((a, b) => ordem[a.status] - ordem[b.status]);
+  limpar(caixa, ...lista.map(p => cartaoPessoa(p, caixa)));
+  contarPendentes();
+}
+function cartaoPessoa(p, caixa) {
+  const [cls, txt] = SELO_STATUS[p.status];
+  const topo = novo("div", { class: "pessoa-topo" }, novo("b", { text: p.nome || "(sem nome)" }), novo("span", { class: "suave", text: p.email }), novo("span", { class: "selo " + cls, text: txt }));
+  if (p.id === PERFIL.id) {
+    topo.append(novo("span", { class: "selo neutro", text: "Você: acesso total" }));
+    return novo("div", { class: "pessoa" }, topo);
+  }
+  const marcas = {};
+  const modulos = novo("div", { class: "modulos" }, ...MODULOS.map(([c, t, dica]) => {
+    marcas[c] = novo("input", { type: "checkbox", title: dica });
+    marcas[c].checked = p.modulos.includes(c);
+    return novo("label", { title: dica }, marcas[c], t + (INTERNOS.includes(c) ? " (interno)" : ""));
+  }));
+  const escolhidos = () => MODULOS.map(m => m[0]).filter(c => marcas[c].checked);
+  const salvar = async mudanca => {
+    const { error } = await banco.from("perfis").update(mudanca).eq("id", p.id);
+    if (error) return avisar("Não consegui salvar.");
+    avisar("Salvo. Vale na próxima vez que a pessoa abrir ou atualizar a página.");
+    desenharPessoas(caixa);
+  };
+  const avisoInterno = () => !escolhidos().some(c => INTERNOS.includes(c)) || confirm("Placar e Motoristas são de uso interno. Liberar para essa pessoa?");
+  const botoes = [];
+  if (p.status === "pendente") botoes.push(novo("button", { class: "principal", text: "Aprovar", onclick: () => { if (!escolhidos().length) return avisar("Escolha pelo menos um módulo."); if (avisoInterno()) salvar({ status: "aprovado", modulos: escolhidos(), aprovado_em: new Date().toISOString() }); } }));
+  if (p.status === "aprovado") botoes.push(novo("button", { class: "principal", text: "Salvar módulos", onclick: () => { if (avisoInterno()) salvar({ modulos: escolhidos() }); } }));
+  if (p.status !== "bloqueado") botoes.push(novo("button", { class: "perigo", text: p.status === "pendente" ? "Recusar" : "Bloquear", onclick: () => { if (confirm(`Bloquear o acesso de ${p.nome || p.email}?`)) salvar({ status: "bloqueado" }); } }));
+  else botoes.push(novo("button", { text: "Reativar", onclick: () => salvar({ status: "aprovado", aprovado_em: new Date().toISOString() }) }));
+  return novo("div", { class: "pessoa" }, topo, p.status === "bloqueado" ? "" : modulos, novo("div", { class: "controles", style: "margin:0" }, ...botoes));
+}
+
+banco.auth.onAuthStateChange(evento => { if (evento === "PASSWORD_RECOVERY") setTimeout(telaNovaSenha, 0); });
+iniciar();
+</script>
+</body>
+</html>
