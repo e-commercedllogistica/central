@@ -251,6 +251,22 @@ dialog#ficha::backdrop { background: rgba(2, 20, 50, .6); }
 .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 18px; margin: 0; }
 .campos dt { font-size: 13px; color: var(--muted); }
 .campos dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+/* Linha do tempo no estilo do Logistic: bolinha, data, status e local. */
+.trilha { list-style: none; margin: 0; padding: 0; }
+.trilha li { position: relative; display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; padding: 0 0 16px 22px; }
+.trilha li::before { content: ""; position: absolute; left: 4px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--eixo); box-shadow: 0 0 0 3px var(--card); z-index: 1; }
+.trilha li::after { content: ""; position: absolute; left: 8px; top: 12px; bottom: -6px; width: 2px; background: var(--line); }
+.trilha li:last-child::after { display: none; }
+.trilha li.atual::before { width: 14px; height: 14px; left: 2px; top: 4px; background: var(--blue); }
+.trilha li.grave::before { background: var(--crit); }
+.trilha li.final::before { background: var(--ok); }
+.trilha-data { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; padding-top: 1px; }
+.trilha b { display: block; font-weight: 600; }
+.trilha-detalhe { display: block; color: var(--fg); }
+.trilha-local { display: inline-block; margin-top: 3px; font-size: 13px; font-weight: 600; padding: 1px 8px; border-radius: 99px; }
+.trilha-local.xpt { background: var(--blue-soft); color: var(--link); }
+.trilha-local.svc { background: var(--warn-soft); color: var(--warn); }
+@media (max-width: 600px) { .trilha li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 .busca-grande { display: flex; gap: 8px; flex-wrap: wrap; }
 .busca-grande input { flex: 1; min-width: 200px; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); }
 .acao { background: var(--blue-soft); color: var(--link); border-radius: 9px; padding: 9px 13px; }
@@ -686,10 +702,32 @@ function buscarId(id) {
   buscaPendente = String(id);
   if (abaAtual === "busca") mostrarAba(); else location.hash = "busca";
 }
+// "SERVICE_CENTER SGO2" vira "Service Center SGO2"; "XPT EGO13" fica igual.
+const localBonito = t => String(t || "").replace(/SERVICE_CENTER/i, "Service Center").replace(/_/g, " ");
+const ehSvc = t => /service/i.test(String(t || ""));
+function linhaDoTempo(itens) {
+  return novo("ol", { class: "trilha" }, ...itens.map((e, i) => {
+    const titulo = String(e[0] || ""), [base, detalhe] = titulo.split("|").map(s => s.trim());
+    const grave = /faltante|perdido|avaria|extravi/i.test(titulo), final = /^entregue|devolvido/i.test(titulo);
+    return novo("li", { class: (i === 0 ? "atual " : "") + (grave ? "grave" : final ? "final" : "") },
+      novo("span", { class: "trilha-data", text: e[1] || "" }),
+      novo("div", {}, novo("b", { text: base }), ...(detalhe ? [novo("span", { class: "trilha-detalhe", text: detalhe })] : []),
+        ...(e[2] ? [novo("span", { class: "trilha-local " + (ehSvc(e[2]) ? "svc" : "xpt"), text: "Transita por " + localBonito(e[2]) })] : [])));
+  }));
+}
+function blocoBipagem(d) {
+  const bipado = d["Bipado em XPT"] === "Sim";
+  const inv = d["Situação Inventário SVC"];
+  return novo("div", {}, novo("h3", { text: "Bipagem e inventário" }), novo("div", { class: "numeros" },
+    numero("Bipado no XPT", bipado ? "Sim" : "Não", bipado ? [d["DH Bipado"], d["Bipador por"]].filter(Boolean).join(" · ") : "sem bipagem registrada", bipado ? "bom" : ""),
+    numero("Inventário do SVC", inv || "Sem registro", inv ? [d["Data Situação Inventário SVC"], d["Inventário Após Status?"] === "Sim" ? "depois do último status" : d["Inventário Após Status?"] === "Não" ? "antes do último status" : ""].filter(Boolean).join(" · ") : "", inv ? "azul" : ""),
+    ...(d["Localizado por"] ? [numero("Localizado por", d["Localizado por"], "", "bom")] : []),
+    ...(d["Não Separável?"] === "Sim" ? [numero("Não separável", "Sim", "etiqueta no Logistic", "alerta")] : [])));
+}
 function fichaPacote(p) {
   const d = p.dados;
   const campo = (rot, v) => v === "" || v === null || v === undefined ? [] : [novo("div", {}, novo("dt", { text: rot }), novo("dd", { text: v }))];
-  const tempo = (titulo, itens) => itens && itens.length ? [novo("div", {}, novo("h3", { text: titulo }), novo("ul", { class: "linha-tempo" }, ...itens.map(e => novo("li", {}, novo("span", { text: e[1] || "" }), novo("span", { text: e[0] })))))] : [];
+  const tempo = (titulo, itens) => itens && itens.length ? [novo("div", {}, novo("h3", { text: titulo }), titulo === "Linha do tempo" ? linhaDoTempo(itens) : novo("ul", { class: "linha-tempo" }, ...itens.map(e => novo("li", {}, novo("span", { text: e[1] || "" }), novo("span", { text: e[0] })))))] : [];
   const valor = d.Valor !== "" && !isNaN(d.Valor) ? moeda(d.Valor) : d.Valor;
   return novo("section", { class: "cartao", style: "display:grid;gap:16px" },
     novo("div", { class: "pessoa-topo" }, novo("h2", { style: "font-size:19px;font-weight:800;margin:0", text: "Pacote " + p.id }), novo("span", { class: "selo azul", text: p.xpt }), ...(d.nivel ? [novo("span", { class: "selo " + NIVEL(d.nivel), style: "margin-left:0" }, novo("i"), semEmoji(d.nivel))] : []),
@@ -698,7 +736,7 @@ function fichaPacote(p) {
     novo("dl", { class: "campos" }, ...campo("Categoria", d.Categoria), ...campo("Situação", d["Situação de Acompanhamento"]), ...campo("Prioridade", d.Prioridade), ...campo("Status atual", d["Status Atual"]), ...campo("Desde", d["Data/Hora Status Atual"]),
       ...campo("Responsável", d["Responsável Atual"]), ...campo("Local", d["Local Atual"]), ...campo("Motorista", d.Motorista), ...campo("Rota", d.Rota), ...campo("Produto", d.Produto), ...campo("Valor", valor), ...campo("Insucesso", d["Data Insucesso"]),
       ...campo("Virou faltante", d["Data Faltante"]), ...campo("Perdido", d["Data Perdido"]), ...campo("Avariado", d["Data Avariado"]), ...campo("Tentativas", d["Tentativas de Entrega"]), ...campo("Cidade", [d.Cidade, d.UF].filter(Boolean).join(" - ")), ...campo("Consultado em", d["Data/Hora Consulta"])),
-    ...tempo("Falhas de entrega", d.falhas), ...tempo("Linha do tempo", d.status));
+    blocoBipagem(d), ...tempo("Linha do tempo", d.status), ...tempo("Falhas de entrega", d.falhas));
 }
 async function buscarPacotes(texto) {
   const t = String(texto || "").replace(/\D/g, "");
