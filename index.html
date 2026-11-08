@@ -110,6 +110,36 @@ button.link:hover:not(:disabled) { text-decoration: underline; color: var(--link
   .titulo-pagina h1 { font-size: 21px; }
 }
 
+/* ---- vidro (07/11/2026): só onde algo passa por baixo (título ao rolar, barra do
+   celular, janelas). Tabelas e números ficam em fundo sólido, pra leitura. */
+:root {
+  --vidro-fundo: color-mix(in srgb, var(--bg) 70%, transparent);
+  --vidro-card: color-mix(in srgb, var(--card) 72%, transparent);
+  --vidro-azul: color-mix(in srgb, var(--deep) 80%, transparent);
+  --vidro-borda: color-mix(in srgb, var(--line) 75%, transparent);
+  --vidro-filtro: blur(14px) saturate(165%);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (min-width: 901px) {
+    .titulo-pagina { position: sticky; top: 0; z-index: 4; margin: -10px -28px 0; padding: 12px 28px 12px;
+      background: var(--vidro-fundo); -webkit-backdrop-filter: var(--vidro-filtro); backdrop-filter: var(--vidro-filtro);
+      border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s; }
+    body.rolou .titulo-pagina { border-bottom-color: var(--vidro-borda); box-shadow: 0 8px 24px -14px rgba(3, 42, 104, .35); }
+  }
+  @media (max-width: 900px) {
+    #lateral { background: var(--vidro-azul); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+      border-bottom: 1px solid rgba(255, 255, 255, .1); }
+  }
+  dialog#ficha::backdrop { background: rgba(2, 20, 50, .42); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .ficha-topo { background: var(--vidro-card); -webkit-backdrop-filter: var(--vidro-filtro); backdrop-filter: var(--vidro-filtro); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .titulo-pagina { background: var(--bg) !important; }
+  #lateral { background: var(--deep) !important; }
+  .ficha-topo { background: var(--card) !important; }
+  .titulo-pagina, #lateral, .ficha-topo, dialog#ficha::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+
 /* ---- peças */
 .cartao { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; box-shadow: var(--sombra); }
 .cartao > h2 { font-size: 15.5px; font-weight: 700; margin-bottom: 12px; }
@@ -191,19 +221,51 @@ td.barra-celula { min-width: 130px; }
 }
 
 /* ---- entrar / cadastro */
-#telaConta { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
-.conta-marca { background: var(--deep); color: #dbe7fb; padding: 44px clamp(28px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; gap: 20px; position: relative; overflow: hidden; }
-.conta-marca::after { content: ""; position: absolute; right: -120px; bottom: -120px; width: 420px; height: 420px; border-radius: 50%; background: rgba(140, 194, 255, .08); }
-.conta-marca img { width: 240px; max-width: 70%; height: auto; }
-.conta-marca h1 { color: #fff; font-size: clamp(25px, 3vw, 36px); font-weight: 800; line-height: 1.15; }
+/* Tela de entrada sempre na cor da marca (07/11/2026): um fundo azul DLL só, com
+   luzes e a grade das rotas; o cartão de acesso é de vidro por cima da luz. */
+#telaConta { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); position: relative; isolation: isolate; overflow: hidden;
+  color-scheme: dark; color: #eef4ff;
+  --fg: #eef4ff; --muted: #b3c6e6; --tit: #ffffff; --link: #9ccaff; --line: rgba(255, 255, 255, .2); --card: rgba(255, 255, 255, .06);
+  --blue: #1f7bff; --crit: #ff9b9b; --crit-soft: rgba(255, 107, 107, .14); --ok: #8fe39b; --ok-soft: rgba(111, 207, 124, .14);
+  background-color: #021c4c;
+  background-image:
+    radial-gradient(55% 65% at 8% 12%, rgba(0, 110, 243, .42), transparent 62%),
+    radial-gradient(50% 60% at 96% 100%, rgba(3, 80, 172, .6), transparent 66%),
+    linear-gradient(160deg, #03306f 0%, #021c4c 55%, #01153a 100%); }
+#telaConta::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 30% 45%, #000 25%, transparent 78%); mask-image: radial-gradient(ellipse 75% 70% at 30% 45%, #000 25%, transparent 78%); }
+.conta-marca { background: transparent; color: #dbe7fb; padding: 44px clamp(28px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; gap: 20px; position: relative; }
+.conta-marca img { width: 250px; max-width: 70%; height: auto; filter: drop-shadow(0 6px 18px rgba(0, 20, 60, .45)); }
+.conta-selo { display: inline-flex; align-items: center; gap: 8px; width: max-content; padding: 5px 12px; border-radius: 99px; border: 1px solid rgba(140, 194, 255, .35); background: rgba(140, 194, 255, .1);
+  color: #cfe3ff; font: 700 12px var(--titulo); letter-spacing: .08em; text-transform: uppercase; }
+.conta-selo i { width: 7px; height: 7px; border-radius: 50%; background: #5fe08a; box-shadow: 0 0 0 3px rgba(95, 224, 138, .2); }
+.conta-marca h1 { color: #fff; font-size: clamp(27px, 3.2vw, 40px); font-weight: 800; line-height: 1.12; max-width: 15ch; }
+.conta-marca h1 em { font-style: normal; color: #8cc2ff; }
 .conta-marca ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .conta-marca li { display: flex; gap: 10px; align-items: flex-start; }
 .conta-marca li svg { flex: none; margin-top: 2px; color: #8cc2ff; }
-.conta-form { display: grid; place-items: center; padding: 32px 20px; }
-.conta-form .cartao { width: min(420px, 100%); padding: 26px 28px; }
-.conta-form h2 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-.conta-form label { display: block; margin-top: 14px; font-weight: 600; font-size: 14.5px; }
-.conta-form input { display: block; width: 100%; padding: 10px 12px; margin-top: 5px; font: inherit; font-weight: 400; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); }
+.conta-form { display: grid; place-items: center; padding: 32px 20px; position: relative; }
+/* Luz atrás do cartão: é ela que o vidro desfoca. */
+.conta-form::before { content: ""; position: absolute; z-index: -1; width: 420px; height: 420px; left: 50%; top: 50%; transform: translate(-12%, -72%);
+  background: radial-gradient(closest-side, rgba(77, 155, 255, .95), rgba(10, 99, 224, .7) 45%, rgba(3, 80, 172, 0)); pointer-events: none; }
+.conta-form::after { content: ""; position: absolute; z-index: -1; width: 260px; height: 260px; left: 50%; top: 50%; transform: translate(-108%, 22%);
+  background: radial-gradient(closest-side, rgba(140, 194, 255, .5), rgba(140, 194, 255, 0)); pointer-events: none; }
+.conta-form .cartao { width: min(420px, 100%); padding: 30px 30px 26px; border-radius: 20px; color: var(--fg);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
+  border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: 0 30px 70px -24px rgba(0, 8, 32, .75), inset 0 1px 0 rgba(255, 255, 255, .25);
+  -webkit-backdrop-filter: blur(24px) saturate(165%); backdrop-filter: blur(24px) saturate(165%); }
+.conta-form h2 { font-size: 23px; font-weight: 800; margin-bottom: 4px; }
+.conta-form label { display: block; margin-top: 16px; font-weight: 600; font-size: 14px; color: #dbe7fb; }
+.conta-form input { display: block; width: 100%; padding: 11px 13px; margin-top: 6px; font: inherit; font-weight: 400; border: 1px solid var(--line); border-radius: 10px; background: rgba(1, 16, 44, .35); color: var(--fg); transition: border-color .15s, box-shadow .15s, background .15s; }
+.conta-form input:hover { border-color: rgba(255, 255, 255, .32); }
+.conta-form input:focus { outline: none; border-color: #8cc2ff; background: rgba(1, 16, 44, .5); box-shadow: 0 0 0 3px rgba(140, 194, 255, .25); }
+.conta-form input:-webkit-autofill { -webkit-text-fill-color: #eef4ff; caret-color: #eef4ff; box-shadow: 0 0 0 40px #0b2a62 inset; }
+.conta-form button.principal { background: linear-gradient(180deg, #2f86ff, #0a63e0); border-color: transparent; box-shadow: 0 10px 24px -10px rgba(31, 123, 255, .9), inset 0 1px 0 rgba(255, 255, 255, .25); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .conta-form .cartao { background: #0b2a62; } }
+@media (prefers-reduced-transparency: reduce) { .conta-form .cartao { background: #0b2a62; -webkit-backdrop-filter: none; backdrop-filter: none; } }
 .conta-acoes { margin-top: 18px; display: grid; gap: 12px; }
 .conta-acoes button.principal { width: 100%; padding: 11px; }
 .conta-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
@@ -277,7 +339,7 @@ dialog#ficha::backdrop { background: rgba(2, 20, 50, .6); }
 <div id="telaConta" hidden></div>
 <div id="app" hidden>
   <aside id="lateral">
-    <div class="lateral-logo"><img src="{{LOGO}}" alt="DLL Logística" width="172" height="65"></div>
+    <div class="lateral-logo"><img id="logoLateral" alt="DLL Logística" width="172" height="65"></div>
     <form id="buscaLateral" role="search" hidden>
       <input id="buscaId" placeholder="ID ou produto..." aria-label="Buscar pacote pelo ID ou pelo produto">
     </form>
@@ -396,7 +458,8 @@ function mostrarConta(corpo) {
   const beneficio = t => novo("li", {}, icone("certo"), t);
   limpar(el("telaConta"),
     novo("section", { class: "conta-marca" }, novo("img", { src: LOGO, alt: "DLL Logística" }),
-      novo("h1", { text: "A operação inteira em uma tela só." }),
+      novo("span", { class: "conta-selo" }, novo("i"), "Central DLL · atualizada pelos robôs"),
+      novo("h1", {}, "A operação inteira ", novo("em", { text: "em uma tela só." })),
       novo("ul", {}, beneficio("Insucessos, faltantes e agregação no mesmo lugar"), beneficio("Números atualizados pelos robôs da DLL"), beneficio("Cada pessoa vê só o que foi liberado para ela")),
       novo("div", { class: "credito", text: CREDITO })),
     novo("div", { class: "conta-form" }, corpo));
@@ -461,7 +524,8 @@ async function sair() { await banco.auth.signOut(); PERFIL = null; location.hash
 
 // ------------------------------------------------------------ início da sessão
 let PERFIL = null, DADOS = {}, abaAtual = null, ABAS = [];
-const LOGO = "{{LOGO}}";
+const LOGO = "{{LOGO}}";  // embutida uma vez só (a barra lateral usa a mesma)
+el("logoLateral").src = LOGO;
 el("rodape").textContent = "Central DLL · " + CREDITO;
 async function iniciar() {
   const { data: { session } } = await banco.auth.getSession();
@@ -684,6 +748,8 @@ function abrirFicha(titulo, ...corpo) {
 }
 el("fichaFechar").onclick = () => el("ficha").close();
 el("ficha").addEventListener("click", e => { if (e.target === el("ficha")) el("ficha").close(); });
+// Título em vidro: a linha e a sombra só aparecem quando tem conteúdo passando por baixo.
+addEventListener("scroll", () => document.body.classList.toggle("rolou", scrollY > 8), { passive: true });
 function partes(pares) {
   const total = pares.reduce((s, p) => s + p[1], 0) || 1;
   return novo("div", { class: "partes" }, ...pares.map(([nome, q]) => novo("div", { class: "parte" }, novo("span", { text: nome }), novo("div", {}, novo("i", { style: `width:${100 * q / total}%` })), novo("b", { text: inteiro(q) }))));
