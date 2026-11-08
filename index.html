@@ -1002,7 +1002,7 @@ const STATUS_INV = {
   repassado: "✅ Débito repassado", contestado: "✅ Contestado com o ML", sem_responsavel: "⚪ Sem responsável",
 };
 const RESPONSAVEL = { "": "Ainda não sei", motorista: "Motorista", dispatcher: "Dispatcher (procedimento)", mercado_livre: "Mercado Livre (envio)", outro: "Outro" };
-const PISTA_CURTA = { bipado: "Bipado depois: contestar", destino: "Motorista: chegou no cliente", rota: "Carregamento / volta da rota", xpt: "Sumiu no XPT", recebimento: "Recebimento", direto: "Perdido direto" };
+const PISTA_CURTA = { bipado_motorista: "Bipado no XPT: XPT responde", bipado_antes: "Bipado no XPT: XPT responde", bipado_depois: "Bipado depois: contestar", destino: "Motorista: chegou no cliente", rota: "Carregamento / volta da rota", xpt: "Sumiu no XPT", recebimento: "Recebimento", direto: "Perdido direto" };
 let INV = null, quinzenaPerdidos = null;
 async function carregarInvestigacoes() {
   const { data, error } = await banco.from("investigacoes").select("pacote, status, responsavel, nota, atualizado_por, atualizado_em");
@@ -1048,14 +1048,16 @@ async function fichaInvestigacao(l) {
       novo("small", { text: "É uma pista tirada da linha do tempo do Logistic, não uma acusação. Confirme antes de apontar." })),
     ...(INV ? [novo("div", {}, novo("h3", { text: "Andamento" }), form, historico)]
       : [novo("div", { class: "nota", text: "Para registrar o andamento, o responsável precisa rodar o arquivo 07_investigacoes.sql no Supabase (uma vez)." })]),
-    novo("div", {}, novo("h3", { text: "Linha do tempo" }), tempo));
+    novo("div", { style: "display:grid;gap:16px" }, tempo));
   const res = await buscarPacotes(id);
   const p = res && (res.exato || (res.lista && res.lista[0]));
-  limpar(tempo, p && p.dados.status && p.dados.status.length ? linhaDoTempo(p.dados.status) : novo("div", { class: "suave", text: "Linha do tempo indisponível." }));
+  // Bipagem (quem bipou e quando) é a prova de que o pacote chegou ao XPT: vem antes da linha do tempo.
+  limpar(tempo, ...(p ? [blocoBipagem(p.dados)] : []),
+    p && p.dados.status && p.dados.status.length ? novo("div", {}, novo("h3", { text: "Linha do tempo" }), linhaDoTempo(p.dados.status)) : novo("div", { class: "suave", text: "Linha do tempo indisponível." }));
   if (INV) {
     const { data } = await banco.from("investigacoes_historico").select("status, responsavel, nota, feito_por, feito_em").eq("pacote", id).order("feito_em", { ascending: false }).limit(10);
     if (data && data.length) limpar(historico, novo("ul", { class: "inv-hist" }, ...data.map(h => novo("li", {},
-      novo("span", { text: new Date(h.feito_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) + " · " + h.feito_por }),
+      novo("span", { text: new Date(h.feito_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) + " · " + nomeBonito(h.feito_por) }),
       novo("b", { text: semEmoji(STATUS_INV[h.status] || h.status) + (h.responsavel ? " · " + RESPONSAVEL[h.responsavel] : "") }),
       ...(h.nota ? [novo("span", { class: "suave", text: h.nota })] : [])))));
   }
