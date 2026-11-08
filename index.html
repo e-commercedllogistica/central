@@ -195,6 +195,20 @@ td.barra-celula { min-width: 130px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--link); background: var(--blue-soft); }
 .vazio { color: var(--muted); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+/* ---- investigação de perdidos */
+.pista { display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--blue-soft); border: 1px solid var(--line); }
+.pista h3 { margin-bottom: 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pista p { margin: 0; font-weight: 600; }
+.pista small { color: var(--muted); }
+.inv-form { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.inv-form label { display: grid; gap: 5px; font-weight: 600; font-size: 14px; }
+.inv-form .inteira { grid-column: 1 / -1; }
+.inv-form select, .inv-form textarea { font: inherit; font-weight: 400; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); resize: vertical; }
+td[data-rot="Quinzena"], td[data-rot="Perdido em"], td[data-rot="Andamento"] { white-space: nowrap; }
+.inv-hist { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.inv-hist li { display: grid; gap: 2px; padding: 9px 12px; border-left: 3px solid var(--blue); background: var(--hover); border-radius: 0 9px 9px 0; font-size: 14px; }
+.inv-hist li > span:first-child { color: var(--muted); font-size: 12.5px; }
+@media (max-width: 640px) { .inv-form { grid-template-columns: minmax(0, 1fr); } }
 .vazio-icone { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-soft); color: var(--ok); }
 
 /* ---- acabamento (07/11/2026): título com ícone, "atualizado há", tendência, atenção */
@@ -412,6 +426,7 @@ const MODULOS = [
   ["inicio", "Início", "Visão geral da operação", "casa"],
   ["busca", "Buscar pacote", "Pelo ID do pacote ou pelo nome do produto", "lupa"],
   ["fila", "Fila do Dia", "O que vira desconto ou prejuízo se ninguém agir", "lista"],
+  ["perdidos", "Perdidos", "Investigar quem responde por cada perdido, por quinzena", "perigo"],
   ["faltantes", "Faltantes", "A salvar, perdidos e recuperados", "caixa"],
   ["agregacao", "Agregação", "Pendências e agregado no dia seguinte", "camadas"],
   ["alertas", "Alertas", "Faltante caro ou suspeito", "sino"],
@@ -421,7 +436,7 @@ const MODULOS = [
   ["relatorio", "Relatório", "Resumo da semana para a diretoria", "documento"],
 ];
 const CREDITO = "Desenvolvido por Ruan Felisbino";
-const INTERNOS = ["alertas", "placar", "motoristas"];
+const INTERNOS = ["alertas", "placar", "motoristas", "perdidos"];
 const ESSENCIAIS = ["inicio", "busca", "fila", "faltantes", "agregacao"];
 const ICONES = {
   casa: "M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5",
@@ -688,7 +703,7 @@ function numero(rot, val, sub, classe = "", aba = null, tend = null) {
   if (aba && ABAS.some(a => a[0] === aba)) return novo("button", { class: "numero " + classe, type: "button", title: "Abrir " + aba, onclick: () => { location.hash = aba; } }, ...filhos);
   return novo("div", { class: "numero " + classe }, ...filhos);
 }
-const NIVEL = t => { const s = String(t); return /🔴|🚨/.test(s) ? "erro" : /🟠|💎/.test(s) ? "aviso" : /🟡|📱/.test(s) ? "azul" : "neutro"; };
+const NIVEL = t => { const s = String(t); return /🔴|🚨/.test(s) ? "erro" : /🟠|💎/.test(s) ? "aviso" : /🟡|📱/.test(s) ? "azul" : /✅/.test(s) ? "ok" : "neutro"; };
 const semEmoji = t => String(t).replace(/^[^\p{L}\p{N}]+/u, "");
 function chaveOrdem(v, tipo) {
   if (tipo === "data") { const m = String(v).match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? +(m[3] + m[2] + m[1]) : 0; }
@@ -970,10 +985,80 @@ async function montarAtencao(caixa, d, u, a) {
     const logo = fila.filter(l => String(l[0]).includes("🟠")).length;
     if (logo) itens.push(item("aviso", `${inteiro(logo)} vence${logo > 1 ? "m" : ""} logo`, "Cobrar o envio do XPT antes de virar risco.", "fila"));
   }
-  if (u && a && u[2] > a[2]) itens.push(item("erro", `+${inteiro(u[2] - a[2])} perdido${u[2] - a[2] > 1 ? "s" : ""} desde ${a[0]}`, "Conferir se a marcação do Mercado Livre está correta.", "faltantes"));
+  if (u && a && u[2] > a[2]) {
+    const temInv = ABAS.some(x => x[0] === "perdidos");
+    itens.push(item("erro", `+${inteiro(u[2] - a[2])} perdido${u[2] - a[2] > 1 ? "s" : ""} desde ${a[0]}`,
+      temInv ? "Já é débito: investigar quem responde para repassar." : "Conferir se a marcação do Mercado Livre está correta.", temInv ? "perdidos" : "faltantes"));
+  }
   if (d.agregacao) itens.push(item("aviso", `${inteiro(d.agregacao)} agregação pendente`, "Pacotes de insucesso ainda sem rota nova.", "agregacao"));
   if (!itens.length) itens.push(item("ok", "Tudo em dia", "Nenhum pacote em risco e nada pendente agora."));
   limpar(caixa, caixa.firstChild, novo("div", { class: "atencao-lista" }, ...itens));
+}
+// ------------------------------------------------------------ perdidos: investigação
+// Perdido = débito certo. Aqui a equipe acha quem responde e registra o andamento
+// (tabela investigacoes; quem mudou e quando é o banco que carimba).
+const STATUS_INV = {
+  a_investigar: "🔴 A investigar", investigando: "🟠 Investigando", apontado: "🟡 Responsável apontado",
+  repassado: "✅ Débito repassado", contestado: "✅ Contestado com o ML", sem_responsavel: "⚪ Sem responsável",
+};
+const RESPONSAVEL = { "": "Ainda não sei", motorista: "Motorista", dispatcher: "Dispatcher (procedimento)", mercado_livre: "Mercado Livre (envio)", outro: "Outro" };
+const PISTA_CURTA = { bipado: "Bipado depois: contestar", destino: "Motorista: chegou no cliente", rota: "Carregamento / volta da rota", xpt: "Sumiu no XPT", recebimento: "Recebimento", direto: "Perdido direto" };
+let INV = null, quinzenaPerdidos = null;
+async function carregarInvestigacoes() {
+  const { data, error } = await banco.from("investigacoes").select("pacote, status, responsavel, nota, atualizado_por, atualizado_em");
+  INV = error ? null : Object.fromEntries(data.map(i => [i.pacote, i]));
+  return !error;
+}
+async function salvarInvestigacao(pacote, campos) {
+  const existe = INV && INV[pacote];
+  const { error } = existe ? await banco.from("investigacoes").update(campos).eq("pacote", pacote)
+    : await banco.from("investigacoes").insert({ pacote, ...campos });
+  if (error) return traduzirErro(error);
+  await carregarInvestigacoes();
+  return "";
+}
+async function fichaInvestigacao(l) {
+  const [q, xpt, id, perdidoEm, faltanteEm, produto, valor, motorista, rota, fato, pista] = l;
+  const atual = (INV && INV[id]) || { status: "a_investigar", responsavel: "", nota: "" };
+  const opcoes = (mapa, valorAtual) => Object.entries(mapa).map(([k, t]) => novo("option", { value: k, text: semEmoji(t), ...(k === valorAtual ? { selected: true } : {}) }));
+  const status = novo("select", { "aria-label": "Andamento" }, ...opcoes(STATUS_INV, atual.status));
+  const resp = novo("select", { "aria-label": "Responsável" }, ...opcoes(RESPONSAVEL, atual.responsavel));
+  const nota = novo("textarea", { rows: 3, maxlength: 400, placeholder: "O que foi feito, com quem falou, prova pedida... (sem nome ou telefone de cliente)" });
+  nota.value = atual.nota || "";
+  const erro = novo("div", { class: "caixa", role: "alert", hidden: true });
+  const tempo = novo("div", {}, novo("div", { class: "esqueleto", style: "min-height:120px" }));
+  const historico = novo("div");
+  const salvar = novo("button", { class: "principal", type: "submit", text: "Salvar andamento" });
+  const form = novo("form", { class: "inv-form", onsubmit: async e => {
+    e.preventDefault(); erro.hidden = true; salvar.disabled = true;
+    const falha = await salvarInvestigacao(id, { status: status.value, responsavel: resp.value, nota: nota.value.trim() });
+    salvar.disabled = false;
+    if (falha) { erro.textContent = falha; erro.hidden = false; return; }
+    avisar("Andamento salvo.");
+    el("ficha").close();
+    if (abaAtual === "perdidos") mostrarAba();
+  } },
+    novo("label", {}, "Andamento", status), novo("label", {}, "Quem responde", resp), novo("label", { class: "inteira" }, "Anotação", nota), erro,
+    novo("div", { class: "inteira" }, salvar));
+  abrirFicha("Perdido " + id,
+    novo("dl", { class: "campos" }, ...[["XPT", xpt], ["Quinzena", q], ["Virou perdido", perdidoEm], ["Virou faltante", faltanteEm], ["Valor", moeda(valor)], ["Motorista", motorista], ["Rota", rota], ["Produto", produto]]
+      .filter(p => p[1]).map(([k, v]) => novo("div", {}, novo("dt", { text: k }), novo("dd", { text: v })))),
+    novo("div", { class: "pista" }, novo("div", {}, novo("h3", { text: "O que o histórico mostra" }), novo("p", { text: fato })),
+      novo("div", {}, novo("h3", { text: "Onde investigar primeiro" }), novo("p", { text: pista })),
+      novo("small", { text: "É uma pista tirada da linha do tempo do Logistic, não uma acusação. Confirme antes de apontar." })),
+    ...(INV ? [novo("div", {}, novo("h3", { text: "Andamento" }), form, historico)]
+      : [novo("div", { class: "nota", text: "Para registrar o andamento, o responsável precisa rodar o arquivo 07_investigacoes.sql no Supabase (uma vez)." })]),
+    novo("div", {}, novo("h3", { text: "Linha do tempo" }), tempo));
+  const res = await buscarPacotes(id);
+  const p = res && (res.exato || (res.lista && res.lista[0]));
+  limpar(tempo, p && p.dados.status && p.dados.status.length ? linhaDoTempo(p.dados.status) : novo("div", { class: "suave", text: "Linha do tempo indisponível." }));
+  if (INV) {
+    const { data } = await banco.from("investigacoes_historico").select("status, responsavel, nota, feito_por, feito_em").eq("pacote", id).order("feito_em", { ascending: false }).limit(10);
+    if (data && data.length) limpar(historico, novo("ul", { class: "inv-hist" }, ...data.map(h => novo("li", {},
+      novo("span", { text: new Date(h.feito_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) + " · " + h.feito_por }),
+      novo("b", { text: semEmoji(STATUS_INV[h.status] || h.status) + (h.responsavel ? " · " + RESPONSAVEL[h.responsavel] : "") }),
+      ...(h.nota ? [novo("span", { class: "suave", text: h.nota })] : [])))));
+  }
 }
 function saudacao() { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; }
 function textoRelatorio(d, s) {
@@ -1025,6 +1110,44 @@ const TELAS = {
   fila(r, d) {
     r.append(novo("div", { class: "numeros" }, numero("Já em risco", inteiro(contar(d, 0, t => t.includes("🔴"))), "agir hoje", "ruim"), numero("Vence logo", inteiro(contar(d, 0, t => t.includes("🟠"))), "cobrar o envio", "alerta"), numero("Conferir", inteiro(contar(d, 0, t => t.includes("🟡"))), "confirmar onde está", "azul")),
       cartao("Pacotes", tabelaViva([{ t: "Prioridade", tipo: "selo", filtro: true }, { t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Categoria", filtro: true }, { t: "Desde", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Prazo / risco", quebra: true }, { t: "Valor", tipo: "moeda" }], d, "Fila vazia.")));
+  },
+  async perdidos(r, d) {
+    const espera = novo("div", { class: "esqueleto", style: "min-height:200px" });
+    r.append(espera);
+    await carregarInvestigacoes();
+    if (abaAtual !== "perdidos") return;
+    espera.remove();
+    const todos = d.lista, atual = d.quinzena_atual;
+    const quinzenas = [...new Set(todos.map(l => l[0]))];  // já vem da mais nova para a mais antiga
+    const anterior = quinzenas.find(q => q !== atual);
+    // Padrão: atual + anterior (o que ainda dá para correr atrás). As antigas já viraram desconto.
+    if (quinzenaPerdidos === null || (quinzenaPerdidos !== "abertas" && quinzenaPerdidos !== "todas" && !quinzenas.includes(quinzenaPerdidos))) quinzenaPerdidos = "abertas";
+    const status = id => (INV && INV[id] && INV[id].status) || "a_investigar";
+    const soma = ls => ls.reduce((s, l) => s + (Number(l[6]) || 0), 0);
+    const daQ = q => todos.filter(l => l[0] === q);
+    const corpo = novo("div", { style: "display:grid;gap:16px" });
+    const desenhar = () => {
+      const sel = quinzenaPerdidos === "todas" ? todos : quinzenaPerdidos === "abertas" ? todos.filter(l => l[0] === atual || l[0] === anterior) : daQ(quinzenaPerdidos);
+      const aInvestigar = sel.filter(l => status(l[2]) === "a_investigar");
+      const resolvidos = sel.filter(l => ["repassado", "contestado"].includes(status(l[2])));
+      const chip = (chave, texto) => novo("button", { class: "mini", type: "button", "aria-pressed": quinzenaPerdidos === chave ? "true" : "false", text: texto, onclick: () => { quinzenaPerdidos = chave; desenhar(); } });
+      const linhas = sel.map(l => [STATUS_INV[status(l[2])], l[0], l[1], l[2], l[3], l[5], l[6], l[7], PISTA_CURTA[l[11]] || l[11]]);
+      limpar(corpo,
+        novo("div", { class: "chips", style: "margin:0" }, chip("abertas", "Atual + anterior"), ...quinzenas.map(q => chip(q, q + (q === atual ? " (atual)" : ""))), chip("todas", "Todas")),
+        novo("div", { class: "numeros" },
+          numero("Nesta quinzena", inteiro(daQ(atual).length), moeda(soma(daQ(atual))) + " em débito", daQ(atual).length ? "ruim" : "bom"),
+          ...(anterior ? [numero("Quinzena anterior", inteiro(daQ(anterior).length), moeda(soma(daQ(anterior))) + " · " + anterior, "alerta")] : []),
+          numero("A investigar", inteiro(aInvestigar.length), moeda(soma(aInvestigar)) + " sem andamento", aInvestigar.length ? "alerta" : "bom"),
+          numero("Repassado ou contestado", inteiro(resolvidos.length), moeda(soma(resolvidos)) + " que não ficou com a DLL", "bom")),
+        ...(INV ? [] : [novo("div", { class: "nota", text: "Para registrar o andamento de cada perdido, rode uma vez o arquivo 07_investigacoes.sql no Supabase. Até lá, a lista e as pistas já funcionam." })]),
+        cartao("Perdidos para investigar",
+          novo("p", { class: "suave", style: "margin:-6px 0 12px;color:var(--muted);font-size:14px", text: "Clique no ID para ver o que o histórico mostra, onde investigar primeiro e registrar o andamento." }),
+          tabelaViva([{ t: "Andamento", tipo: "selo", filtro: true }, { t: "Quinzena", filtro: true }, { t: "XPT", filtro: true },
+            { t: "ID", aoClicar: id => { const l = todos.find(x => x[2] === id); if (l) fichaInvestigacao(l); } }, { t: "Perdido em", tipo: "data" },
+            { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }, { t: "Pista", filtro: true }], linhas, "Nenhum perdido nesse período.")));
+    };
+    desenhar();
+    r.append(novo("div", { class: "nota", text: "Uso interno. Perdido já é débito: o objetivo aqui é achar quem responde e repassar. A pista é ponto de partida, não prova." }), corpo);
   },
   faltantes(r, d) {
     const graf = novo("div");
@@ -1145,7 +1268,7 @@ function cartaoPessoa(p, caixa, nums) {
     avisar("Salvo. Vale na próxima vez que a pessoa abrir ou atualizar a página.");
     desenharPessoas(caixa, nums);
   };
-  const avisoInterno = () => !escolhidos().some(c => INTERNOS.includes(c)) || confirm("Placar e Motoristas são de uso interno. Liberar para essa pessoa?");
+  const avisoInterno = () => !escolhidos().some(c => INTERNOS.includes(c)) || confirm("Alertas, Placar, Motoristas e Perdidos são de uso interno (citam motorista). Liberar para essa pessoa?");
   const botoes = [];
   if (p.status === "pendente") botoes.push(novo("button", { class: "principal", type: "button", text: "Aprovar", onclick: () => { if (!escolhidos().length) return avisar("Escolha pelo menos um módulo."); if (avisoInterno()) salvar({ status: "aprovado", modulos: escolhidos(), aprovado_em: new Date().toISOString() }); } }));
   if (p.status === "aprovado") botoes.push(novo("button", { class: "principal", type: "button", text: "Salvar módulos", onclick: () => { if (avisoInterno()) salvar({ modulos: escolhidos() }); } }));
