@@ -173,6 +173,7 @@ button.numero:hover:not(:disabled) { border-color: var(--line); border-top-color
 .controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
 .controles input, .controles select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); max-width: 100%; }
 .controles input { width: 230px; }
+.controles select { max-width: 240px; text-overflow: ellipsis; }
 .conta-linhas { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .tabela { overflow-x: auto; }
 .tabela.alta { max-height: 66vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
@@ -193,7 +194,49 @@ td.barra-celula { min-width: 130px; }
 .barrinha div i { display: block; height: 100%; border-radius: 99px; background: var(--s1); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--link); background: var(--blue-soft); }
-.vazio { color: var(--muted); padding: 10px 0; }
+.vazio { color: var(--muted); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+.vazio-icone { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-soft); color: var(--ok); }
+
+/* ---- acabamento (07/11/2026): título com ícone, "atualizado há", tendência, atenção */
+.titulo-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.titulo-icone { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--blue-soft); color: var(--link); }
+.titulo-pagina p { margin-left: 44px; }
+.relogio { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 3px 11px; border-radius: 99px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: var(--neutro-soft); white-space: nowrap; }
+.heroi-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: relative; z-index: 1; }
+.heroi .relogio { margin: 0; color: #dbe7fb; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .16); }
+.tend { display: inline-flex; margin-top: 7px; padding: 1px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tend.piorou { color: var(--crit); background: var(--crit-soft); }
+.tend.melhorou { color: var(--ok); background: var(--ok-soft); }
+.tend.igual { color: var(--neutro); background: var(--neutro-soft); }
+.atencao > h2 { display: flex; align-items: center; gap: 8px; }
+.atencao > h2 svg { color: var(--link); }
+.atencao-lista { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.atencao-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--hover); }
+.atencao-icone { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; }
+.atencao-item.erro .atencao-icone { background: var(--crit-soft); color: var(--crit); }
+.atencao-item.aviso .atencao-icone { background: var(--warn-soft); color: var(--warn); }
+.atencao-item.ok .atencao-icone { background: var(--ok-soft); color: var(--ok); }
+.atencao-texto { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.atencao-texto > span { color: var(--muted); font-size: 14px; }
+.atencao-ids { display: grid; gap: 2px; margin-top: 4px; justify-items: start; font-variant-numeric: tabular-nums; font-size: 14px; }
+.atencao-ids button { white-space: nowrap; }
+.atencao-texto > button, .controles button.mini { display: inline-flex; align-items: center; gap: 5px; }
+.atencao-texto > button { justify-self: start; margin-top: 8px; }
+@media (max-width: 640px) {
+  .titulo-pagina p { margin-left: 0; }
+  .relogio { margin-left: 0; }
+  .atencao-lista { grid-template-columns: minmax(0, 1fr); }
+  /* Tabela vira cartões: cada linha um cartão, rótulo à esquerda e valor à direita. */
+  .tabela.cartoes { max-height: none; overflow: visible; border: 0; border-radius: 0; }
+  .tabela.cartoes table, .tabela.cartoes tbody { display: block; }
+  .tabela.cartoes thead { display: none; }
+  .tabela.cartoes tr { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; margin-bottom: 10px; background: var(--card); }
+  .tabela.cartoes tbody tr:hover td { background: none; }
+  .tabela.cartoes td { display: flex; justify-content: space-between; align-items: center; gap: 14px; border: 0; padding: 5px 0; text-align: right; min-width: 0; }
+  .tabela.cartoes td::before { content: attr(data-rot); flex: none; max-width: 45%; text-align: left; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .tabela.cartoes td:empty { display: none; }
+  .tabela.cartoes td.barra-celula .barrinha { flex: 1; }
+}
 .podio { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .podio > div { border: 1px solid var(--line); border-radius: 12px; padding: 12px 15px; background: var(--hover); }
 .podio .pos { font-size: 22px; line-height: 1; }
@@ -341,7 +384,7 @@ dialog#ficha::backdrop { background: rgba(2, 20, 50, .6); }
   <aside id="lateral">
     <div class="lateral-logo"><img id="logoLateral" alt="DLL Logística" width="172" height="65"></div>
     <form id="buscaLateral" role="search" hidden>
-      <input id="buscaId" placeholder="ID ou produto..." aria-label="Buscar pacote pelo ID ou pelo produto">
+      <input id="buscaId" placeholder="ID ou produto...  ( / )" aria-label="Buscar pacote pelo ID ou pelo produto" aria-keyshortcuts="/">
     </form>
     <nav id="menu" role="tablist" aria-label="Módulos"></nav>
     <div class="lateral-pe" id="ladoConta"></div>
@@ -395,6 +438,11 @@ const ICONES = {
   lua: "M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z",
   sair: "M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l-4-4 4-4M6 12h10",
   certo: "M5 12.5l4.5 4.5L19 7.5",
+  relogio: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  alvo: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 12.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z",
+  baixar: "M12 4v11M7 10.5l5 5 5-5M5 20h14",
+  seta: "M9 6l6 6-6 6",
+  perigo: "M12 4l9 16H3l9-16zM12 10v4M12 17.5v.01",
 };
 
 const el = id => document.getElementById(id);
@@ -582,6 +630,20 @@ function montarMenu() {
   if (PERFIL.admin) contarPendentes();
 }
 const atualizadoEm = reg => reg && !reg.demonstracao ? "Atualizado em " + new Date(reg.atualizado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+// "há 12 min", "há 3 h", "ontem às 13:55": mais fácil de ler que a data cheia (que fica no title).
+function haQuanto(iso) {
+  const d = new Date(iso), min = Math.round((Date.now() - d) / 60000);
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (!isFinite(min)) return "";
+  if (min < 2) return "agora mesmo";
+  if (min < 60) return `há ${min} min`;
+  if (min < 12 * 60) return `há ${Math.round(min / 60)} h`;
+  const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+  if (d.toDateString() === new Date().toDateString()) return `hoje às ${hora}`;
+  if (d.toDateString() === ontem.toDateString()) return `ontem às ${hora}`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` às ${hora}`;
+}
+const relogio = reg => reg && !reg.demonstracao ? novo("span", { class: "relogio", title: atualizadoEm(reg) }, icone("relogio", 14), "Atualizado " + haQuanto(reg.atualizado_em)) : null;
 async function mostrarAba() {
   if (!PERFIL || !ABAS.length) return;
   const pedida = location.hash.slice(1);
@@ -597,9 +659,11 @@ async function mostrarAba() {
     if (!ok) return limpar(raiz, novo("div", { class: "caixa", text: "Não consegui carregar este módulo. Atualize a página." }));
   }
   limpar(raiz);
+  document.title = (abaAtual === "inicio" ? "" : aba[1] + " · ") + "Central DLL";
   if (abaAtual !== "inicio") {
-    const quando = atualizadoEm(reg);
-    raiz.append(novo("div", { class: "titulo-pagina" }, novo("h1", { text: aba[1] }), novo("p", { text: aba[2] + (quando ? " · " + quando.toLowerCase() : "") })));
+    raiz.append(novo("div", { class: "titulo-pagina" },
+      novo("div", { class: "titulo-linha" }, novo("span", { class: "titulo-icone" }, icone(aba[3], 20)), novo("h1", { text: aba[1] }), relogio(reg) || ""),
+      novo("p", { text: aba[2] })));
   }
   TELAS[abaAtual](raiz, reg && reg.conteudo);
   window.scrollTo(0, 0);
@@ -610,8 +674,17 @@ window.addEventListener("resize", () => { if (window.innerWidth === largura) ret
 
 // ------------------------------------------------------------ peças das telas
 const cartao = (titulo, ...filhos) => novo("section", { class: "cartao" }, novo("h2", { text: titulo }), ...filhos);
-function numero(rot, val, sub, classe = "", aba = null) {
+// Tendência: { v: diferença, ruimSobe: true quando subir é ruim, texto: "em 7 dias" }.
+function tendencia(t) {
+  if (!t || !isFinite(t.v)) return null;
+  if (t.v === 0) return novo("span", { class: "tend igual", text: "= " + t.texto });
+  const ruim = (t.v > 0) === t.ruimSobe;
+  return novo("span", { class: "tend " + (ruim ? "piorou" : "melhorou"), title: ruim ? "Piorou" : "Melhorou" }, (t.v > 0 ? "▲ " : "▼ ") + inteiro(Math.abs(t.v)) + " " + t.texto);
+}
+function numero(rot, val, sub, classe = "", aba = null, tend = null) {
   const filhos = [novo("div", { class: "rot", text: rot }), novo("div", { class: "val", text: val }), novo("div", { class: "sub", text: sub || "" })];
+  const t = tendencia(tend);
+  if (t) filhos.push(t);
   if (aba && ABAS.some(a => a[0] === aba)) return novo("button", { class: "numero " + classe, type: "button", title: "Abrir " + aba, onclick: () => { location.hash = aba; } }, ...filhos);
   return novo("div", { class: "numero " + classe }, ...filhos);
 }
@@ -623,6 +696,11 @@ function chaveOrdem(v, tipo) {
   return String(v ?? "").toLowerCase();
 }
 function celula(v, c) {
+  const td = celulaSemRotulo(v, c);
+  td.dataset.rot = c.t;  // no celular, a linha vira cartão e o rótulo aparece ao lado do valor
+  return td;
+}
+function celulaSemRotulo(v, c) {
   if (c.tipo === "selo") return novo("td", {}, v ? novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v)) : "");
   if (c.tipo === "moeda") return novo("td", { class: "num", text: moeda(v) });
   if (c.tipo === "num") return novo("td", { class: "num", text: decimal(v) });
@@ -634,10 +712,23 @@ function celula(v, c) {
   return novo("td", { text: v ?? "", class: c.quebra ? "quebra" : "" });
 }
 const eNumerica = c => ["num", "moeda", "pct"].includes(c.tipo);
+// Planilha (.csv que o Excel abre direto): exatamente o que está filtrado na tela.
+function baixarPlanilha(colunas, linhas) {
+  const txt = v => { const s = String(v ?? "").replace(/"/g, '""'); return /[;"\n]/.test(s) ? `"${s}"` : s; };
+  const valor = (v, c) => c.tipo === "selo" ? semEmoji(v) : (eNumerica(c) && typeof v === "number") ? String(v).replace(".", ",") : v;
+  const corpo = [colunas.map(c => txt(c.t)).join(";"), ...linhas.map(r => colunas.map((c, i) => txt(valor(r[i], c))).join(";"))].join("\r\n");
+  const url = URL.createObjectURL(new Blob(["﻿" + corpo], { type: "text/csv;charset=utf-8" }));
+  const hoje = new Date().toLocaleDateString("sv-SE");  // AAAA-MM-DD no horário daqui (o toISOString é UTC: à noite virava o dia seguinte)
+  const a = novo("a", { href: url, download: `central-dll_${abaAtual || "tabela"}_${hoje}.csv` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  avisar(`${inteiro(linhas.length)} linhas baixadas.`);
+}
+const vazioBonito = texto => novo("div", { class: "vazio" }, novo("span", { class: "vazio-icone" }, icone("certo", 20)), novo("span", { text: texto }));
 function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
-  if (!linhas.length) return novo("div", { class: "vazio", text: vazio });
+  if (!linhas.length) return vazioBonito(vazio);
   const st = { busca: "", filtros: {}, ord: null, dir: 1 };
-  const caixa = novo("div", { class: "tabela alta" }), conta = novo("span", { class: "conta-linhas" });
+  const caixa = novo("div", { class: "tabela alta cartoes" }), conta = novo("span", { class: "conta-linhas" });
   const iId = colunas.findIndex(c => c.t === "ID"), iMoeda = colunas.findIndex(c => c.tipo === "moeda");
   const filtradas = () => {
     let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || String(r[i]) === st.filtros[i]));
@@ -663,6 +754,7 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
     controles.append(sel);
   });
   if (iId >= 0) controles.append(novo("button", { class: "mini", type: "button", text: "Copiar IDs", onclick: () => { const ids = filtradas().map(r => r[iId]); copiar(ids.join("\n"), `${inteiro(ids.length)} IDs copiados.`); } }));
+  controles.append(novo("button", { class: "mini", type: "button", title: "Baixa o que está filtrado na tela, para abrir no Excel", onclick: () => baixarPlanilha(colunas, filtradas()) }, icone("baixar", 15), "Baixar Excel"));
   controles.append(conta);
   desenhar();
   return novo("div", {}, controles, caixa);
@@ -750,6 +842,12 @@ el("fichaFechar").onclick = () => el("ficha").close();
 el("ficha").addEventListener("click", e => { if (e.target === el("ficha")) el("ficha").close(); });
 // Título em vidro: a linha e a sombra só aparecem quando tem conteúdo passando por baixo.
 addEventListener("scroll", () => document.body.classList.toggle("rolou", scrollY > 8), { passive: true });
+// Atalho "/" vai direto para a busca de pacote (como em sistemas profissionais).
+addEventListener("keydown", e => {
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  const b = el("buscaId");
+  if (b && !el("app").hidden && !el("buscaLateral").hidden) { e.preventDefault(); b.focus(); }
+});
 function partes(pares) {
   const total = pares.reduce((s, p) => s + p[1], 0) || 1;
   return novo("div", { class: "partes" }, ...pares.map(([nome, q]) => novo("div", { class: "parte" }, novo("span", { text: nome }), novo("div", {}, novo("i", { style: `width:${100 * q / total}%` })), novo("b", { text: inteiro(q) }))));
@@ -853,6 +951,30 @@ function resultadoProduto(res, abrir) {
       cartao("Como terminaram", partes(ordenar(desfechos)))),
     cartao("Pacotes", tabelaViva([{ t: "ID", aoClicar: abrir }, { t: "XPT", filtro: true }, { t: "Produto", quebra: true }, { t: "Insucesso", tipo: "data" }, { t: "Categoria", filtro: true }, { t: "Status atual" }, { t: "Valor", tipo: "moeda" }], linhas)));
 }
+// "Precisa de atenção hoje": o que fazer primeiro, em linguagem de ação. Usa a Fila
+// (se a pessoa tem acesso) e a evolução do Início. Nada novo sai do banco além da Fila.
+async function montarAtencao(caixa, d, u, a) {
+  const itens = [];
+  const item = (nivel, titulo, texto, aba, extra) => novo("div", { class: "atencao-item " + nivel },
+    novo("span", { class: "atencao-icone" }, icone(nivel === "erro" ? "perigo" : nivel === "ok" ? "certo" : "alvo", 18)),
+    novo("div", { class: "atencao-texto" }, novo("b", { text: titulo }), novo("span", { text: texto }), ...(extra ? [extra] : []),
+      ...(aba && ABAS.some(x => x[0] === aba) ? [novo("button", { class: "mini", type: "button", onclick: () => { location.hash = aba; } }, "Abrir", icone("seta", 14))] : [])));
+  if (DADOS.fila && await carregarModulo(DADOS.fila)) {
+    const fila = DADOS.fila.conteudo || [];
+    const risco = fila.filter(l => String(l[0]).includes("🔴"));
+    if (risco.length) {
+      const top = [...risco].sort((x, y) => (Number(y[7]) || 0) - (Number(x[7]) || 0)).slice(0, 3);
+      const ids = novo("div", { class: "atencao-ids" }, ...top.map(l => novo("button", { class: "link", type: "button", onclick: () => buscarId(l[2]) }, `${l[2]} · ${l[1]} · ${moeda(l[7])}`)));
+      itens.push(item("erro", `${inteiro(risco.length)} pacote${risco.length > 1 ? "s" : ""} já em risco`, `${moeda(risco.reduce((s, l) => s + (Number(l[7]) || 0), 0))} em jogo. Os de maior valor:`, "fila", ids));
+    }
+    const logo = fila.filter(l => String(l[0]).includes("🟠")).length;
+    if (logo) itens.push(item("aviso", `${inteiro(logo)} vence${logo > 1 ? "m" : ""} logo`, "Cobrar o envio do XPT antes de virar risco.", "fila"));
+  }
+  if (u && a && u[2] > a[2]) itens.push(item("erro", `+${inteiro(u[2] - a[2])} perdido${u[2] - a[2] > 1 ? "s" : ""} desde ${a[0]}`, "Conferir se a marcação do Mercado Livre está correta.", "faltantes"));
+  if (d.agregacao) itens.push(item("aviso", `${inteiro(d.agregacao)} agregação pendente`, "Pacotes de insucesso ainda sem rota nova.", "agregacao"));
+  if (!itens.length) itens.push(item("ok", "Tudo em dia", "Nenhum pacote em risco e nada pendente agora."));
+  limpar(caixa, caixa.firstChild, novo("div", { class: "atencao-lista" }, ...itens));
+}
 function saudacao() { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; }
 function textoRelatorio(d, s) {
   return [`*DLL Logística - semana de ${s.nome}*`, "", `💰 Total recuperado: ${moeda(d.recuperado_total)} em ${inteiro(d.recuperados_total)} faltantes`, "",
@@ -881,18 +1003,24 @@ const TELAS = {
   },
   inicio(r, d) {
     const graf = novo("div");
-    const ev = d.evolucao, u = ev[ev.length - 1], a = ev[ev.length - 2];
+    const ev = d.evolucao || [], u = ev[ev.length - 1], a = ev[ev.length - 2];
     const dif = (t, i) => { const v = u[i] - a[i]; return `${t} ${v > 0 ? "+" : ""}${inteiro(v)}`; };
+    // Comparação com 7 dias antes (ou o dia mais antigo que tiver na evolução).
+    const sem = ev.length > 1 ? ev[Math.max(0, ev.length - 8)] : null, dias = u && sem ? ev.length - 1 - ev.indexOf(sem) : 0;
+    const em = i => sem ? { v: u[i] - sem[i], ruimSobe: true, texto: `em ${dias} dia${dias > 1 ? "s" : ""}` } : null;
     const primeiro = nomeBonito(PERFIL.nome || "").split(" ")[0];
-    const quando = atualizadoEm(DADOS.inicio);
-    r.append(novo("section", { class: "heroi" }, novo("div", { class: "ola", text: `${saudacao()}${primeiro ? ", " + primeiro : ""}.${quando ? " " + quando + "." : ""}` }),
+    const atencao = novo("section", { class: "cartao atencao" }, novo("h2", {}, icone("alvo", 17), "Precisa de atenção hoje"), novo("div", { class: "esqueleto", style: "min-height:120px" }));
+    r.append(novo("section", { class: "heroi" },
+        novo("div", { class: "heroi-topo" }, novo("div", { class: "ola", text: `${saudacao()}${primeiro ? ", " + primeiro : ""}.` }), relogio(DADOS.inicio) || ""),
         novo("div", { class: "rot", text: d.desde ? `Recuperado desde ${d.desde}` : "Recuperado no total" }), novo("div", { class: "grande", text: moeda(d.recuperado_total) }), novo("div", { class: "sub", text: `${inteiro(d.recuperados_total)} faltantes localizados` })),
       novo("div", { class: "numeros" },
-        numero("Fila do dia", inteiro(d.fila), "precisam de ação", "alerta", "fila"), numero("A salvar", inteiro(d.a_salvar), moeda(d.r_salvar), "azul", "faltantes"),
-        numero("Perdidos", inteiro(d.perdidos), moeda(d.r_perdido), d.perdidos ? "ruim" : "", "faltantes"), numero("Agregação pendente", inteiro(d.agregacao), "", "azul", "agregacao"),
+        numero("Fila do dia", inteiro(d.fila), "precisam de ação", "alerta", "fila"), numero("A salvar", inteiro(d.a_salvar), moeda(d.r_salvar), "azul", "faltantes", em(1)),
+        numero("Perdidos", inteiro(d.perdidos), moeda(d.r_perdido), d.perdidos ? "ruim" : "", "faltantes", em(2)), numero("Agregação pendente", inteiro(d.agregacao), "", "azul", "agregacao", em(3)),
         numero("Agregado no D+1", pctTexto(d.semana.pct_d1), "últimos dias", "bom", "agregacao")),
-      cartao("Evolução diária", novo("div", { class: "mudou", style: "margin:-8px 0 12px", text: `De ${a[0]} para ${u[0]}: ${dif("a salvar", 1)} · ${dif("perdidos", 2)} · ${dif("agregação", 3)}` }), graf));
-    graficoLinhas(graf, ev.map(l => l[0]), [{ nome: "Faltantes a salvar", cor: "--s1", valores: ev.map(l => l[1]) }, { nome: "Perdidos", cor: "--s2", valores: ev.map(l => l[2]) }, { nome: "Agregação pendente", cor: "--s3", valores: ev.map(l => l[3]) }]);
+      atencao,
+      ...(u && a ? [cartao("Evolução diária", novo("div", { class: "mudou", style: "margin:-8px 0 12px", text: `De ${a[0]} para ${u[0]}: ${dif("a salvar", 1)} · ${dif("perdidos", 2)} · ${dif("agregação", 3)}` }), graf)] : []));
+    if (u && a) graficoLinhas(graf, ev.map(l => l[0]), [{ nome: "Faltantes a salvar", cor: "--s1", valores: ev.map(l => l[1]) }, { nome: "Perdidos", cor: "--s2", valores: ev.map(l => l[2]) }, { nome: "Agregação pendente", cor: "--s3", valores: ev.map(l => l[3]) }]);
+    montarAtencao(atencao, d, u, a);
   },
   fila(r, d) {
     r.append(novo("div", { class: "numeros" }, numero("Já em risco", inteiro(contar(d, 0, t => t.includes("🔴"))), "agir hoje", "ruim"), numero("Vence logo", inteiro(contar(d, 0, t => t.includes("🟠"))), "cobrar o envio", "alerta"), numero("Conferir", inteiro(contar(d, 0, t => t.includes("🟡"))), "confirmar onde está", "azul")),
