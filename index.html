@@ -1182,7 +1182,9 @@ const TELAS = {
     r.append(novo("div", { class: "numeros" }, numero("A salvar", inteiro(soma(1)), moeda(soma(2)), "azul"), numero("Perdidos", inteiro(soma(3)), moeda(soma(4)), "ruim"), numero("Recuperados", inteiro(soma(5)), moeda(soma(6)), "bom")),
       cartao("Por quinzena", graf, novo("div", { style: "margin-top:12px" }, tabelaFixa(colQ, d.quinzenas))),
       cartao("Por XPT", tabelaFixa([{ t: "XPT" }, ...colQ.slice(1)], d.por_xpt)),
-      cartao("A salvar", tabelaViva([{ t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Virou faltante", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }], d.lista)));
+      cartao("A salvar", tabelaViva([{ t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Virou faltante", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" },
+        // Bipado no XPT: Sim = chegou ao XPT antes de virar Faltante (não é erro do ML); "depois" = apareceu.
+        ...(d.lista.length && d.lista[0].length > 7 ? [{ t: "Bipado no XPT", tipo: "selo", filtro: true }] : [])], d.lista)));
     graficoBarras(graf, d.quinzenas.map(l => l[0]), [{ nome: "A salvar", cor: "--s1", valores: d.quinzenas.map(l => l[2]) }, { nome: "Perdido", cor: "--s2", valores: d.quinzenas.map(l => l[4]) }, { nome: "Recuperado", cor: "--s3", valores: d.quinzenas.map(l => l[6]) }], moeda, v => "R$ " + abreviar(v));
   },
   agregacao(r, d) {
