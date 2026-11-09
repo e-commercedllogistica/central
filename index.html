@@ -174,6 +174,16 @@ button.numero:hover:not(:disabled) { border-color: var(--line); border-top-color
 .controles input, .controles select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); max-width: 100%; }
 .controles input { width: 230px; }
 .controles select { max-width: 240px; text-overflow: ellipsis; }
+details.multi { position: relative; }
+details.multi > summary { list-style: none; cursor: pointer; padding: 7px 30px 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--fg); white-space: nowrap; position: relative; user-select: none; }
+details.multi > summary::-webkit-details-marker { display: none; }
+details.multi > summary::after { content: "▾"; position: absolute; right: 10px; color: var(--muted); }
+details.multi[open] > summary { border-color: var(--blue); }
+.multi-lista { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; min-width: 210px; max-height: 280px; overflow-y: auto; display: grid; gap: 2px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .45); }
+.multi-lista label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 400; }
+.multi-lista label:hover { background: var(--hover); }
+.controles .multi-lista input[type="checkbox"] { width: 16px; height: 16px; margin: 0; padding: 0; flex: none; accent-color: var(--blue); }
+.multi-lista button.link { justify-self: start; margin: 4px 6px 0; font-size: 13.5px; }
 .controles .datas { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
 .controles input[type="date"] { width: auto; color-scheme: light dark; }
 .conta-linhas { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -744,6 +754,24 @@ function baixarPlanilha(colunas, linhas) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   avisar(`${inteiro(linhas.length)} linhas baixadas.`);
 }
+// Filtro "tipo Excel" (09/11/2026): marca uma ou mais opções; nada marcado = todos.
+function filtroMultiplo(rotulo, valores, mostrar, aoMudar) {
+  const marcados = new Set();
+  const resumo = novo("summary", { "aria-label": rotulo });
+  const atualizar = () => {
+    resumo.textContent = rotulo + ": " + (!marcados.size ? "todos" : marcados.size === 1 ? mostrar([...marcados][0]) : marcados.size + " selecionados");
+    aoMudar(marcados.size ? new Set(marcados) : null);
+  };
+  const caixas = valores.map(v => {
+    const cb = novo("input", { type: "checkbox", onchange: () => { if (cb.checked) marcados.add(v); else marcados.delete(v); atualizar(); } });
+    return { v, cb, rot: novo("label", {}, cb, mostrar(v)) };
+  });
+  const limparTudo = novo("button", { class: "link", type: "button", text: "Limpar", onclick: () => { marcados.clear(); caixas.forEach(x => { x.cb.checked = false; }); atualizar(); } });
+  resumo.textContent = rotulo + ": todos";
+  return novo("details", { class: "multi" }, resumo, novo("div", { class: "multi-lista" }, ...caixas.map(x => x.rot), limparTudo));
+}
+// Clicou fora: fecha a lista aberta do filtro.
+document.addEventListener("click", e => document.querySelectorAll("details.multi[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; }));
 const vazioBonito = texto => novo("div", { class: "vazio" }, novo("span", { class: "vazio-icone" }, icone("certo", 20)), novo("span", { text: texto }));
 function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   if (!linhas.length) return vazioBonito(vazio);
@@ -752,7 +780,7 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   const iId = colunas.findIndex(c => c.t === "ID"), iMoeda = colunas.findIndex(c => c.tipo === "moeda");
   const iData = colunas.findIndex(c => c.tipo === "data");  // filtro De/Até usa a 1ª coluna de data da tabela
   const filtradas = () => {
-    let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || String(r[i]) === st.filtros[i]));
+    let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || st.filtros[i].has(String(r[i]))));
     if (iData >= 0 && (st.de || st.ate)) l = l.filter(r => { const d = chaveOrdem(r[iData], "data"); return d && (!st.de || d >= st.de) && (!st.ate || d <= st.ate); });
     if (st.busca) { const b = st.busca.toLowerCase(); l = l.filter(r => r.some(v => String(v ?? "").toLowerCase().includes(b))); }
     if (st.ord !== null) { const t = colunas[st.ord].tipo; l = [...l].sort((a, b) => { const x = chaveOrdem(a[st.ord], t), y = chaveOrdem(b[st.ord], t); return x < y ? -st.dir : x > y ? st.dir : 0; }); }
@@ -772,8 +800,7 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   colunas.forEach((c, i) => {
     if (!c.filtro) return;
     const valores = [...new Set(linhas.map(r => String(r[i])).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
-    const sel = novo("select", { "aria-label": c.t, onchange: () => { st.filtros[i] = sel.value; desenhar(); } }, novo("option", { value: "", text: c.t + ": todos" }), ...valores.map(v => novo("option", { value: v, text: c.tipo === "selo" ? semEmoji(v) : v })));
-    controles.append(sel);
+    controles.append(filtroMultiplo(c.t, valores, v => c.tipo === "selo" ? semEmoji(v) : v, marcados => { st.filtros[i] = marcados; desenhar(); }));
   });
   if (iData >= 0) {
     // "2026-11-08" (campo de data) -> 20261108, o mesmo número que a ordenação usa para "08/11/2026".
