@@ -195,6 +195,9 @@ td.barra-celula { min-width: 130px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--link); background: var(--blue-soft); }
 .vazio { color: var(--muted); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+/* ficha do pacote dentro da janela: sem a moldura de cartão (a janela já é a moldura) */
+#fichaCorpo > .cartao { border: 0; box-shadow: none; padding: 0; background: none; }
+.voltar-ficha { justify-self: start; }
 /* ---- investigação de perdidos */
 .pista { display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--blue-soft); border: 1px solid var(--line); }
 .pista h3 { margin-bottom: 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -879,11 +882,21 @@ function fichaMotorista(nome, linha, f) {
       tabelaFixa([{ t: "Insucesso" }, { t: "XPT" }, { t: "ID", aoClicar: buscarId }, { t: "Motivos", quebra: true }, { t: "Categoria" }, { t: "Valor", tipo: "moeda" }], f.pacotes.map(p => [p[0], p[1], p[2], p[3], p[4], p[6]]))));
   graficoBarras(graf, f.semanas.map(s => s[0]), [{ nome: "Insucessos", cor: "--s1", valores: f.semanas.map(s => s[1]) }, { nome: "Faltantes", cor: "--s2", valores: f.semanas.map(s => s[2]) }], inteiro, inteiro);
 }
-function buscarId(id) {
+// Clicar num ID abre a ficha do pacote numa janela por cima (09/11/2026): antes ia
+// para a aba Buscar e a pessoa perdia a tabela, os filtros e o ponto da lista.
+// Se já tinha uma ficha aberta (motorista, perdido), aparece "Voltar" para ela.
+let pedidoFicha = 0;
+async function buscarId(id) {
   if (!DADOS.busca) return copiar(id, "ID copiado.");
-  if (el("ficha").open) el("ficha").close();
-  buscaPendente = String(id);
-  if (abaAtual === "busca") mostrarAba(); else location.hash = "busca";
+  const meu = ++pedidoFicha;
+  const anterior = el("ficha").open ? { titulo: el("fichaTitulo").textContent, nos: [...el("fichaCorpo").childNodes] } : null;
+  const voltar = anterior ? [novo("button", { class: "mini voltar-ficha", type: "button", onclick: () => abrirFicha(anterior.titulo, ...anterior.nos) }, "← Voltar")] : [];
+  abrirFicha("Ficha do pacote", ...voltar, novo("div", { class: "esqueleto", style: "min-height:240px" }));
+  const res = await buscarPacotes(String(id));
+  if (meu !== pedidoFicha || !el("ficha").open) return;  // clicou em outro ID ou fechou enquanto carregava
+  const p = res && !res.erro && (res.exato || (res.lista && res.lista.length === 1 ? res.lista[0] : null));
+  limpar(el("fichaCorpo"), ...voltar, p ? fichaPacote(p)
+    : novo("div", { class: "vazio", text: res && res.erro ? res.erro : "Pacote " + id + " não encontrado no banco do robô." }));
 }
 // "SERVICE_CENTER SGO2" vira "Service Center SGO2"; "XPT EGO13" fica igual.
 const localBonito = t => String(t || "").replace(/SERVICE_CENTER/i, "Service Center").replace(/_/g, " ");
