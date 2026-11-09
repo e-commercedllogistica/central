@@ -207,6 +207,15 @@ td.barra-celula { min-width: 130px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--link); background: var(--blue-soft); }
 .vazio { color: var(--muted); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+/* Tabela expandida: ocupa a janela toda, por cima de tudo menos das fichas */
+.tabela-viva.expandida { position: fixed; inset: 10px; z-index: 40; display: flex; flex-direction: column; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 30px 80px rgba(0, 0, 0, .45); }
+.tabela-viva.expandida > .tabela.alta { flex: 1; max-height: none; min-height: 0; }
+body.com-tabela-expandida { overflow: hidden; }
+.selo-botao { border: 0; background: none; padding: 0; cursor: pointer; }
+.selo-botao:hover .selo { outline: 2px solid currentColor; outline-offset: 1px; }
+.faixa-novos { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: var(--blue-soft); color: var(--link); font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--line); }
+.resolvido { padding: 10px 14px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.anotacao-recolhida { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
 /* ficha do pacote dentro da janela: sem a moldura de cartão (a janela já é a moldura) */
 #fichaCorpo > .cartao { border: 0; box-shadow: none; padding: 0; background: none; }
 .voltar-ficha { justify-self: start; }
@@ -445,6 +454,7 @@ const MODULOS = [
   ["cruzamentos", "Cruzamentos", "Insucesso que depois foi entregue: justificativa a conferir", "alvo"],
   ["ofensores", "Ofensores", "Motoristas com mais insucesso que a média do XPT", "perigo"],
   ["faltantes", "Faltantes", "A salvar, perdidos e recuperados", "caixa"],
+  ["achados", "Faltantes achados", "Recuperados: quem achou, em quantos dias e quanto foi salvo", "certo"],
   ["agregacao", "Agregação", "Pendências e agregado no dia seguinte", "camadas"],
   ["alertas", "Alertas", "Faltante caro ou suspeito", "sino"],
   ["placar", "Placar", "Ranking semanal dos XPTs, uso interno", "trofeu"],
@@ -473,6 +483,8 @@ const ICONES = {
   relogio: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
   alvo: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 12.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z",
   baixar: "M12 4v11M7 10.5l5 5 5-5M5 20h14",
+  expandir: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  recolher: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
   seta: "M9 6l6 6-6 6",
   perigo: "M12 4l9 16H3l9-16zM12 10v4M12 17.5v.01",
 };
@@ -702,6 +714,24 @@ async function mostrarAba() {
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", mostrarAba);
+// Dados novos do robô (09/11/2026): cada lista é carregada uma vez; se o robô publicar
+// depois, a tela ficava velha sem ninguém saber. A cada 5 min (e ao voltar pra aba) confere.
+async function conferirDadosNovos() {
+  if (!PERFIL || el("app").hidden) return;
+  const { data, error } = await banco.from("dados_modulo").select("modulo, atualizado_em");
+  if (error || !data) return;
+  const mudou = data.filter(x => DADOS[x.modulo] && x.atualizado_em !== DADOS[x.modulo].atualizado_em);
+  if (!mudou.length) return;
+  const quando = new Date(Math.max(...mudou.map(x => new Date(x.atualizado_em)))).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const faixa = el("faixaNovos") || (() => { const f = novo("div", { id: "faixaNovos", class: "faixa-novos", role: "status" }); el("conteudo").before(f); return f; })();
+  limpar(faixa, novo("span", { text: `Há dados novos do robô (atualizado às ${quando}).` }),
+    novo("button", { class: "mini", type: "button", text: "Atualizar", onclick: () => {
+      for (const x of mudou) { DADOS[x.modulo].atualizado_em = x.atualizado_em; delete DADOS[x.modulo].conteudo; }
+      INV = null; faixa.remove(); mostrarAba();
+    } }));
+}
+setInterval(conferirDadosNovos, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) conferirDadosNovos(); });
 let largura = window.innerWidth;
 window.addEventListener("resize", () => { if (window.innerWidth === largura) return; largura = window.innerWidth; clearTimeout(mostrarAba.t); mostrarAba.t = setTimeout(mostrarAba, 200); });
 
@@ -728,12 +758,14 @@ function chaveOrdem(v, tipo) {
   if (tipo === "num" || tipo === "moeda" || tipo === "pct") return typeof v === "number" ? v : -Infinity;
   return String(v ?? "").toLowerCase();
 }
-function celula(v, c) {
-  const td = celulaSemRotulo(v, c);
+function celula(v, c, r) {
+  const td = celulaSemRotulo(v, c, r);
   td.dataset.rot = c.t;  // no celular, a linha vira cartão e o rótulo aparece ao lado do valor
   return td;
 }
-function celulaSemRotulo(v, c) {
+function celulaSemRotulo(v, c, r) {
+  // Selo clicável (ex.: coluna Formulário abre os detalhes da resposta): recebe a linha toda.
+  if (c.tipo === "selo" && c.aoClicar && v) return novo("td", {}, novo("button", { class: "selo-botao", type: "button", title: "Ver detalhes", onclick: () => c.aoClicar(r) }, novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v))));
   if (c.tipo === "selo") return novo("td", {}, v ? novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v)) : "");
   if (c.tipo === "moeda") return novo("td", { class: "num", text: moeda(v) });
   if (c.tipo === "num") return novo("td", { class: "num", text: decimal(v) });
@@ -759,6 +791,28 @@ function baixarPlanilha(colunas, linhas) {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   avisar(`${inteiro(linhas.length)} linhas baixadas.`);
+}
+// Filtro da coluna Formulário: Sim / Não / Outra ocorrência / Sem formulário (SGO2), sem separar por horário.
+const FILTRO_FORM = v => { const s = semEmoji(String(v || "")).split(" · ")[0].trim(); return !s ? "Sem formulário (SGO2)" : s === "Sim" || s === "Não" ? s : "Outra ocorrência"; };
+// Link de evidência do formulário: só vale se for do Google Drive, em https.
+function linkDrive(url) {
+  try { const u = new URL(url); return u.protocol === "https:" && u.hostname === "drive.google.com" ? u.href : ""; } catch (e) { return ""; }
+}
+// Detalhes do formulário dos dispatchers (SGO3): quem preencheu, quando, o que colocou.
+async function fichaFormulario(id, xpt) {
+  if (DADOS.faltantes && DADOS.faltantes.conteudo === undefined) await carregarModulo(DADOS.faltantes);
+  const f = (DADOS.faltantes && DADOS.faltantes.conteudo && DADOS.faltantes.conteudo.formulario) || {};
+  const resp = f[id] || [];
+  const quando = DADOS.faltantes && DADOS.faltantes.conteudo && DADOS.faltantes.conteudo.formulario_em;
+  abrirFicha("Formulário do dispatcher · " + id,
+    resp.length ? novo("ul", { class: "inv-hist" }, ...resp.map(r => novo("li", {},
+      novo("span", { text: `${r.quando} · ${r.xpt || xpt || ""}` }),
+      novo("b", { text: `${r.ocorrencia || "(sem ocorrência)"} · preenchido por ${nomeBonito(r.nome) || "não informado"}` }),
+      novo("span", { class: "suave", text: `Rota ${r.rota || "-"}${r.outros ? ` · junto com mais ${r.outros} pacote(s) na mesma resposta` : ""}` }),
+      ...(linkDrive(r.evidencia) ? [novo("a", { href: linkDrive(r.evidencia), target: "_blank", rel: "noopener noreferrer", style: "color:var(--link);font-weight:600", text: "Abrir evidência (Drive)" })] : []))))
+      : novo("div", { class: "vazio", text: "Nenhuma resposta do formulário com este pacote." }),
+    novo("p", { class: "suave", style: "margin:0;color:var(--muted);font-size:13px", text: "Formulário de ocorrências do SGO3 (o SGO2 não tem)." + (quando ? " Lido em " + new Date(quando).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) + "." : "") }),
+    novo("button", { class: "mini", type: "button", text: "Abrir a ficha do pacote", onclick: () => buscarId(id) }));
 }
 // Filtro "tipo Excel" (09/11/2026): marca uma ou mais opções; nada marcado = todos.
 function filtroMultiplo(rotulo, valores, mostrar, aoMudar) {
@@ -786,7 +840,9 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   const iId = colunas.findIndex(c => c.t === "ID"), iMoeda = colunas.findIndex(c => c.tipo === "moeda");
   const iData = colunas.findIndex(c => c.tipo === "data");  // filtro De/Até usa a 1ª coluna de data da tabela
   const filtradas = () => {
-    let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || st.filtros[i].has(String(r[i]))));
+    // filtroPor: agrupa os valores do filtro (ex.: "Sim · 02/11 09:07" e "Sim · 05/11 10:00" = "Sim").
+    const chaveFiltro = (c, v) => c.filtroPor ? c.filtroPor(v) : String(v);
+    let l = linhas.filter(r => colunas.every((c, i) => !c.filtro || !st.filtros[i] || st.filtros[i].has(chaveFiltro(c, r[i]))));
     if (iData >= 0 && (st.de || st.ate)) l = l.filter(r => { const d = chaveOrdem(r[iData], "data"); return d && (!st.de || d >= st.de) && (!st.ate || d <= st.ate); });
     if (st.busca) { const b = st.busca.toLowerCase(); l = l.filter(r => r.some(v => String(v ?? "").toLowerCase().includes(b))); }
     if (st.ord !== null) { const t = colunas[st.ord].tipo; l = [...l].sort((a, b) => { const x = chaveOrdem(a[st.ord], t), y = chaveOrdem(b[st.ord], t); return x < y ? -st.dir : x > y ? st.dir : 0; }); }
@@ -799,13 +855,13 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
     conta.textContent = txt;
     const cab = novo("tr", {}, ...colunas.map((c, i) => novo("th", { text: c.t + (st.ord === i ? (st.dir > 0 ? " ▲" : " ▼") : ""), class: "ordena" + (eNumerica(c) ? " num" : ""),
       onclick: () => { if (st.ord === i) st.dir = -st.dir; else { st.ord = i; st.dir = eNumerica(c) ? -1 : 1; } desenhar(); } })));
-    limpar(caixa, novo("table", {}, novo("thead", {}, cab), novo("tbody", {}, ...l.slice(0, 1000).map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c)))))));
+    limpar(caixa, novo("table", {}, novo("thead", {}, cab), novo("tbody", {}, ...l.slice(0, 1000).map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c, r)))))));
   };
   const busca = novo("input", { type: "search", placeholder: "Filtrar...", "aria-label": "Filtrar a tabela", oninput: () => { st.busca = busca.value.trim(); desenhar(); } });
   const controles = novo("div", { class: "controles" }, busca);
   colunas.forEach((c, i) => {
     if (!c.filtro) return;
-    const valores = [...new Set(linhas.map(r => String(r[i])).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    const valores = [...new Set(linhas.map(r => c.filtroPor ? c.filtroPor(r[i]) : String(r[i])).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
     controles.append(filtroMultiplo(c.t, valores, v => c.tipo === "selo" ? semEmoji(v) : v, marcados => { st.filtros[i] = marcados; desenhar(); }));
   });
   if (iData >= 0) {
@@ -817,16 +873,30 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   }
   if (iId >= 0) controles.append(novo("button", { class: "mini", type: "button", text: "Copiar IDs", onclick: () => { const ids = filtradas().map(r => r[iId]); copiar(ids.join("\n"), `${inteiro(ids.length)} IDs copiados.`); } }));
   controles.append(novo("button", { class: "mini", type: "button", title: "Baixa o que está filtrado na tela, para abrir no Excel", onclick: () => baixarPlanilha(colunas, filtradas()) }, icone("baixar", 15), "Baixar Excel"));
+  // Expandir (09/11/2026): a tabela ocupa a janela toda, com os mesmos filtros. Esc ou "Recolher" volta.
+  const expandir = novo("button", { class: "mini", type: "button", title: "Ver a tabela em tela cheia (Esc volta)", onclick: () => alternarExpandida(n, expandir) }, icone("expandir", 15), "Expandir");
+  controles.append(expandir);
   controles.append(conta);
   desenhar();
-  const n = novo("div", {}, controles, caixa);
+  const n = novo("div", { class: "tabela-viva" }, controles, caixa);
   n.redesenhar = desenhar;  // para mudar uma linha sem perder busca, filtros e ordem
   return n;
+}
+function alternarExpandida(caixa, botao) {
+  const abrir = !caixa.classList.contains("expandida");
+  document.querySelectorAll(".tabela-viva.expandida").forEach(c => c.classList.remove("expandida"));
+  caixa.classList.toggle("expandida", abrir);
+  document.body.classList.toggle("com-tabela-expandida", abrir);
+  limpar(botao, icone(abrir ? "recolher" : "expandir", 15), abrir ? "Recolher" : "Expandir");
+  if (abrir) {
+    const esc = e => { if (e.key === "Escape" && !el("ficha").open) { removeEventListener("keydown", esc); if (caixa.classList.contains("expandida")) alternarExpandida(caixa, botao); } };
+    addEventListener("keydown", esc);
+  }
 }
 function tabelaFixa(colunas, linhas) {
   return novo("div", { class: "tabela" }, novo("table", {},
     novo("thead", {}, novo("tr", {}, ...colunas.map(c => novo("th", { text: c.t, class: eNumerica(c) ? "num" : "" })))),
-    novo("tbody", {}, ...linhas.map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c)))))));
+    novo("tbody", {}, ...linhas.map(r => novo("tr", {}, ...colunas.map((c, i) => celula(r[i], c, r)))))));
 }
 
 // ------------------------------------------------------------ gráficos
@@ -972,13 +1042,19 @@ function fichaPacote(p) {
   const tempo = (titulo, itens) => itens && itens.length ? [novo("div", {}, novo("h3", { text: titulo }), titulo === "Linha do tempo" ? linhaDoTempo(itens) : novo("ul", { class: "linha-tempo" }, ...itens.map(e => novo("li", {}, novo("span", { text: e[1] || "" }), novo("span", { text: e[0] })))))] : [];
   const valor = d.Valor !== "" && !isNaN(d.Valor) ? moeda(d.Valor) : d.Valor;
   const anotacao = novo("div");  // "Anotação da equipe": preenchida se a pessoa pode (montarAnotacao)
-  montarAnotacao(anotacao, p.id);
+  const concluido = d["Situação de Acompanhamento"] === "Concluído";
+  montarAnotacao(anotacao, p.id, concluido);
+  // Caso fechado: diz logo no topo como terminou (antes parecia pendência).
+  const comoTerminou = [d["Localizado por"] ? "localizado pelo " + String(d["Localizado por"]).split(" - ")[0] : "",
+    d["Status Atual"] ? String(d["Status Atual"]).toLowerCase() + (d["Data/Hora Status Atual"] ? ` (${d["Data/Hora Status Atual"]})` : "") : ""].filter(Boolean).join(" e ");
+  const resolvido = concluido ? [novo("div", { class: "resolvido" }, `✅ Resolvido${comoTerminou ? ": " + comoTerminou : ""}. ${d.Categoria ? "Categoria final: " + d.Categoria + "." : ""}`)] : [];
   return novo("section", { class: "cartao", style: "display:grid;gap:16px" },
     novo("div", { class: "pessoa-topo" }, novo("h2", { style: "font-size:19px;font-weight:800;margin:0", text: "Pacote " + p.id }), novo("span", { class: "selo azul", text: p.xpt }), ...(d.nivel ? [novo("span", { class: "selo " + NIVEL(d.nivel), style: "margin-left:0" }, novo("i"), semEmoji(d.nivel))] : []),
       novo("span", { style: "margin-left:auto;display:flex;gap:8px;flex-wrap:wrap" }, novo("button", { class: "mini", type: "button", text: "Copiar ID", onclick: () => copiar(p.id, "ID copiado.") }), ...(linkLogistic(d.url) ? [novo("a", { href: linkLogistic(d.url), target: "_blank", rel: "noopener noreferrer", style: "color:var(--link);font-weight:600;align-self:center", text: "Abrir no Logistic" })] : []))),
-    ...(d["Ação Recomendada"] ? [novo("div", { class: "acao", text: d["Ação Recomendada"] })] : []),
+    ...resolvido,
+    ...(d["Ação Recomendada"] && !concluido ? [novo("div", { class: "acao", text: d["Ação Recomendada"] })] : []),
     novo("dl", { class: "campos" }, ...campo("Categoria", d.Categoria), ...campo("Situação", d["Situação de Acompanhamento"]), ...campo("Prioridade", d.Prioridade), ...campo("Status atual", d["Status Atual"]), ...campo("Desde", d["Data/Hora Status Atual"]),
-      ...campo("Responsável", d["Responsável Atual"]), ...campo("Local", d["Local Atual"]), ...campo("Motorista", d.Motorista), ...campo("Rota", d.Rota), ...campo("Produto", d.Produto), ...campo("Valor", valor), ...campo("Insucesso", d["Data Insucesso"]),
+      ...campo("Responsável", d["Responsável Atual"]), ...campo("Local", d["Local Atual"] ? localBonito(d["Local Atual"]) : ""), ...campo("Motorista", d.Motorista), ...campo("Rota", d.Rota), ...campo("Produto", d.Produto), ...campo("Valor", valor), ...campo("Insucesso", d["Data Insucesso"]),
       ...campo("Virou faltante", d["Data Faltante"]), ...campo("Perdido", d["Data Perdido"]), ...campo("Avariado", d["Data Avariado"]), ...campo("Tentativas", d["Tentativas de Entrega"]), ...campo("Cidade", [d.Cidade, d.UF].filter(Boolean).join(" - ")), ...campo("Consultado em", d["Data/Hora Consulta"])),
     blocoBipagem(d), anotacao, ...tempo("Linha do tempo", d.status), ...tempo("Falhas de entrega", d.falhas));
 }
@@ -1123,8 +1199,14 @@ function formAndamento(id) {
   return novo("div", {}, novo("h3", { text: "Anotação da equipe" }), form, historico);
 }
 // Bloco da anotação na ficha de qualquer pacote: só aparece para quem pode (RLS).
-async function montarAnotacao(caixa, id) {
+// Pacote já concluído (entregue, localizado...) sem anotação: fica recolhido, pra não
+// parecer pendência (usuário, 09/11/2026: "pacote foi até entregue, não entendi?").
+async function montarAnotacao(caixa, id, concluido = false) {
   if (INV === null && !(await carregarInvestigacoes())) return;
+  if (concluido && !(INV && INV[id])) {
+    return limpar(caixa, novo("div", { class: "anotacao-recolhida" }, novo("span", { text: "Caso concluído: nada para investigar." }),
+      novo("button", { class: "mini", type: "button", text: "Anotar mesmo assim", onclick: () => limpar(caixa, formAndamento(id)) })));
+  }
   limpar(caixa, formAndamento(id));
 }
 async function fichaInvestigacao(l) {
@@ -1216,7 +1298,7 @@ const TELAS = {
       const aInvestigar = sel.filter(l => status(l[2]) === "a_investigar");
       const resolvidos = sel.filter(l => ["repassado", "contestado"].includes(status(l[2])));
       const chip = (chave, texto) => novo("button", { class: "mini", type: "button", "aria-pressed": quinzenaPerdidos === chave ? "true" : "false", text: texto, onclick: () => { quinzenaPerdidos = chave; desenhar(); } });
-      const linhas = sel.map(l => [STATUS_INV[status(l[2])], l[0], l[1], l[2], l[3], l[5], l[6], l[7], PISTA_CURTA[l[11]] || l[11]]);
+      const linhas = sel.map(l => [STATUS_INV[status(l[2])], l[0], l[1], l[2], l[3], l[5], l[6], l[7], PISTA_CURTA[l[11]] || l[11], l[12] || ""]);
       const tabPerdidos = tabelaDosPerdidos(linhas);
       limpar(corpo,
         novo("div", { class: "chips", style: "margin:0" }, chip("abertas", "Atual + anterior"), ...quinzenas.map(q => chip(q, q + (q === atual ? " (atual)" : ""))), chip("todas", "Todas")),
@@ -1233,7 +1315,8 @@ const TELAS = {
     const tabelaDosPerdidos = linhas => {
       const t = tabelaViva([{ t: "Andamento", tipo: "selo", filtro: true }, { t: "Quinzena", filtro: true }, { t: "XPT", filtro: true },
         { t: "ID", aoClicar: id => { const l = todos.find(x => x[2] === id); if (l) fichaInvestigacao(l); } }, { t: "Perdido em", tipo: "data" },
-        { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }, { t: "Pista", filtro: true }], linhas, "Nenhum perdido nesse período.");
+        { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }, { t: "Pista", filtro: true },
+        { t: "Formulário", tipo: "selo", filtro: true, filtroPor: FILTRO_FORM, aoClicar: linha => fichaFormulario(linha[3], linha[2]) }], linhas, "Nenhum perdido nesse período.");
       // Salvou o andamento na ficha: o selo da linha muda na hora, sem perder os filtros.
       TABELAS_INV = TABELAS_INV.filter(x => !x.perdidos);
       if (t.redesenhar) TABELAS_INV.push({ perdidos: true, linhas, iId: 3, colunas: { 0: id => STATUS_INV[status(id)] }, redesenhar: t.redesenhar });
@@ -1241,6 +1324,28 @@ const TELAS = {
     };
     desenhar();
     r.append(novo("div", { class: "nota", text: "Uso interno. Perdido já é débito: o objetivo aqui é achar quem responde e repassar. A pista é ponto de partida, não prova." }), corpo);
+  },
+  achados(r, d) {
+    // Linha: [XPT, ID, virou faltante, achado em, dias, quem achou, status final, produto, valor, motorista]
+    const l = d.lista, dataNum = t => { const m = String(t).match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? +(m[3] + m[2] + m[1]) : 0; };
+    const corte = (() => { const x = new Date(); x.setDate(x.getDate() - 7); return +x.toLocaleDateString("sv-SE").replace(/-/g, ""); })();
+    const semana = l.filter(x => dataNum(x[3]) >= corte);
+    const por = t => l.filter(x => x[5].startsWith(t));
+    const dias = l.filter(x => typeof x[4] === "number").map(x => x[4]).sort((a, b) => a - b);
+    const mediana = dias.length ? dias[Math.floor(dias.length / 2)] : 0;
+    const soma = ls => ls.reduce((s, x) => s + (Number(x[8]) || 0), 0);
+    r.append(
+      novo("div", { class: "numeros" },
+        numero("Recuperado no total", moeda(d.r_total), `${inteiro(d.total)} faltantes achados`, "bom"),
+        numero("Achados em 7 dias", inteiro(semana.length), moeda(soma(semana)), "bom"),
+        numero("Achados pelo XPT", inteiro(por("XPT").length), "achou e liberou via forms", "azul"),
+        numero("Achados pelo SVC", inteiro(por("SVC").length), "localizou e enviou ao XPT", "azul"),
+        numero("Tempo até achar", `${inteiro(mediana)} dia${mediana === 1 ? "" : "s"}`, "metade é achada em até isso", "")),
+      cartao("Faltantes achados",
+        novo("p", { class: "suave", style: "margin:-6px 0 12px;color:var(--muted);font-size:14px", text: "O filtro de datas usa \"Achado em\". \"Não informado\" = achado antes de o robô registrar quem achou." }),
+        tabelaViva([{ t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Achado em", tipo: "data" }, { t: "Virou faltante" }, { t: "Dias até achar", tipo: "num" },
+          { t: "Quem achou", filtro: true }, { t: "Status final", filtro: true }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" }],
+          l.map(x => [x[0], x[1], x[3], x[2], x[4], x[5], x[6], x[7], x[8], x[9]]), "Nenhum faltante achado ainda.")));
   },
   ofensores(r, d) {
     // Linha: [motorista, XPT, rotas, pacotes, entregues, insucessos, %, média XPT %, vezes a média, acima da média, ...grupos, fortes, pontos, sinais]
@@ -1308,12 +1413,16 @@ const TELAS = {
     const soma = (i) => d.por_xpt.reduce((s, l) => s + (Number(l[i]) || 0), 0);
     const colQ = [{ t: "Quinzena" }, { t: "A salvar", tipo: "num" }, { t: "R$ a salvar", tipo: "moeda" }, { t: "Perdidos", tipo: "num" }, { t: "R$ perdido", tipo: "moeda" }, { t: "Recuperados", tipo: "num" }, { t: "R$ recuperado", tipo: "moeda" }];
     // A salvar: + "Bipado no XPT" (se o robô já manda) + "Quem responde" (anotação da equipe, se a pessoa pode ver).
-    const temBip = d.lista.length && d.lista[0].length > 7;
-    const linhasSalvar = d.lista.map(l => [...l.slice(0, temBip ? 8 : 7), ...(INV ? [quemResponde(l[1])] : [])]);
-    const iQuem = temBip ? 8 : 7;
+    const temBip = d.lista.length && d.lista[0].length > 7, temForm = d.lista.length && d.lista[0].length > 8;
+    const fixas = temForm ? 9 : temBip ? 8 : 7;
+    const linhasSalvar = d.lista.map(l => [...l.slice(0, fixas), ...(INV ? [quemResponde(l[1])] : [])]);
+    const iQuem = fixas;
     const tabSalvar = tabelaViva([{ t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Virou faltante", tipo: "data" }, { t: "Dias", tipo: "num" }, { t: "Produto", quebra: true }, { t: "Valor", tipo: "moeda" }, { t: "Motorista" },
       // Bipado no XPT: Sim = chegou ao XPT antes de virar Faltante; "depois" = apareceu.
-      ...(temBip ? [{ t: "Bipado no XPT", tipo: "selo", filtro: true }] : []), ...(INV ? [{ t: "Quem responde", filtro: true }] : [])], linhasSalvar);
+      ...(temBip ? [{ t: "Bipado no XPT", tipo: "selo", filtro: true }] : []),
+      // Formulário (SGO3): o dispatcher informou o faltante? Clique = quem preencheu, hora e o que colocou.
+      ...(temForm ? [{ t: "Formulário", tipo: "selo", filtro: true, filtroPor: FILTRO_FORM, aoClicar: linha => fichaFormulario(linha[1], linha[0]) }] : []),
+      ...(INV ? [{ t: "Quem responde", filtro: true }] : [])], linhasSalvar);
     if (INV && tabSalvar.redesenhar) TABELAS_INV.push({ linhas: linhasSalvar, iId: 1, colunas: { [iQuem]: quemResponde }, redesenhar: tabSalvar.redesenhar });
     const tabelaSalvar = cartao("A salvar", ...(INV ? [novo("p", { class: "suave", style: "margin:-6px 0 12px;color:var(--muted);font-size:14px", text: "Clique no ID para abrir a ficha e anotar quem responde (ex.: perdido em rota pelo motorista)." })] : []), tabSalvar);
     r.append(novo("div", { class: "numeros" }, numero("A salvar", inteiro(soma(1)), moeda(soma(2)), "azul"), numero("Perdidos", inteiro(soma(3)), moeda(soma(4)), "ruim"), numero("Recuperados", inteiro(soma(5)), moeda(soma(6)), "bom")),
