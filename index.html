@@ -194,11 +194,22 @@ table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nu
 th { text-align: left; font-size: 12.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding: 9px 10px; white-space: nowrap; }
 th.ordena { cursor: pointer; user-select: none; }
 th.ordena:hover { color: var(--link); }
-td { border-bottom: 1px solid var(--line); padding: 8px 10px; vertical-align: middle; }
+td { border-bottom: 1px solid var(--line); padding: 7px 10px; vertical-align: middle; line-height: 1.35; }
 tbody tr:hover td { background: var(--hover); }
 tr:last-child td { border-bottom: 0; }
 td.num, th.num { text-align: right; white-space: nowrap; }
 td.quebra { min-width: 200px; }
+/* Visual limpo (09/11/2026): grade fina entre colunas, listra leve, texto longo em até 2 linhas,
+   célula vazia com "—" e o "Não" apagadinho (o que chama atenção é o que importa). */
+.tabela.alta td + td, .tabela.alta th + th { border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+.tabela.alta tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--hover) 45%, transparent); }
+.tabela.alta tbody tr:hover td { background: var(--hover); }
+.tabela.alta td { white-space: nowrap; }
+.tabela.alta td.quebra, .tabela.alta td.dois { white-space: normal; }
+.tabela.alta td .duas-linhas { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tabela.alta td.dois { min-width: 130px; max-width: 190px; }
+td.cel-vazia { color: var(--muted); opacity: .55; text-align: center; }
+.selo.neutro { background: transparent; color: var(--muted); padding-left: 2px; padding-right: 2px; font-weight: 500; }
 td.barra-celula { min-width: 130px; }
 .barrinha { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .barrinha span { min-width: 42px; text-align: right; }
@@ -207,10 +218,11 @@ td.barra-celula { min-width: 130px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chips button[aria-pressed="true"] { border-color: var(--blue); color: var(--link); background: var(--blue-soft); }
 .vazio { color: var(--muted); padding: 26px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
-/* Tabela expandida: ocupa a janela toda, por cima de tudo menos das fichas */
-.tabela-viva.expandida { position: fixed; inset: 10px; z-index: 40; display: flex; flex-direction: column; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 30px 80px rgba(0, 0, 0, .45); }
-.tabela-viva.expandida > .tabela.alta { flex: 1; max-height: none; min-height: 0; }
-body.com-tabela-expandida { overflow: hidden; }
+/* Puxar a tabela pra baixo: alça na borda de baixo; "inteira" = sem rolagem por dentro */
+.tabela.alta.inteira { max-height: none; }
+.puxador { display: flex; justify-content: center; align-items: center; height: 16px; margin-top: 2px; cursor: ns-resize; touch-action: none; user-select: none; }
+.puxador span { width: 56px; height: 5px; border-radius: 99px; background: var(--line); transition: background .15s, width .15s; }
+.puxador:hover span { background: var(--blue); width: 80px; }
 .selo-botao { border: 0; background: none; padding: 0; cursor: pointer; }
 .selo-botao:hover .selo { outline: 2px solid currentColor; outline-offset: 1px; }
 .faixa-novos { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: var(--blue-soft); color: var(--link); font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--line); }
@@ -272,7 +284,10 @@ td[data-rot="Quinzena"], td[data-rot="Perdido em"], td[data-rot="Andamento"] { w
   .tabela.cartoes tbody tr:hover td { background: none; }
   .tabela.cartoes td { display: flex; justify-content: space-between; align-items: center; gap: 14px; border: 0; padding: 5px 0; text-align: right; min-width: 0; }
   .tabela.cartoes td::before { content: attr(data-rot); flex: none; max-width: 45%; text-align: left; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
-  .tabela.cartoes td:empty { display: none; }
+  .tabela.cartoes td:empty, .tabela.cartoes td.cel-vazia { display: none; }
+  .tabela.cartoes td + td { border-left: 0; }
+  .tabela.cartoes tbody tr:nth-child(even) td { background: none; }
+  .tabela.cartoes td, .tabela.cartoes td.dois { white-space: normal; max-width: none; }
   .tabela.cartoes td.barra-celula .barrinha { flex: 1; }
 }
 .podio { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
@@ -763,10 +778,16 @@ function celula(v, c, r) {
   td.dataset.rot = c.t;  // no celular, a linha vira cartão e o rótulo aparece ao lado do valor
   return td;
 }
+// Colunas de nome de pessoa: no máximo 2 linhas (o nome inteiro aparece ao passar o mouse).
+const COLUNA_NOME = t => /motorista|quem entregou|quem achou|bipador/i.test(t);
 function celulaSemRotulo(v, c, r) {
+  const vazio = v === "" || v === null || v === undefined;
+  if (vazio && c.tipo !== "pct") return novo("td", { class: "cel-vazia", text: "—", title: "Sem informação" });
   // Selo clicável (ex.: coluna Formulário abre os detalhes da resposta): recebe a linha toda.
   if (c.tipo === "selo" && c.aoClicar && v) return novo("td", {}, novo("button", { class: "selo-botao", type: "button", title: "Ver detalhes", onclick: () => c.aoClicar(r) }, novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v))));
-  if (c.tipo === "selo") return novo("td", {}, v ? novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v)) : "");
+  if (c.tipo === "selo") return novo("td", {}, novo("span", { class: "selo " + NIVEL(v) }, novo("i"), semEmoji(v)));
+  if (!c.tipo && !c.aoClicar && (c.quebra || COLUNA_NOME(c.t)))
+    return novo("td", { class: c.quebra ? "quebra" : "dois", title: String(v) }, novo("span", { class: "duas-linhas", text: String(v) }));
   if (c.tipo === "moeda") return novo("td", { class: "num", text: moeda(v) });
   if (c.tipo === "num") return novo("td", { class: "num", text: decimal(v) });
   if (c.tipo === "pct") {
@@ -850,6 +871,7 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   };
   const desenhar = () => {
     const l = filtradas();
+    ajustarAlturaAuto(caixa, l.length);  // filtrou pra pouca coisa: mostra tudo de uma vez
     let txt = l.length === linhas.length ? `${inteiro(l.length)} linhas` : `${inteiro(l.length)} de ${inteiro(linhas.length)}`;
     if (iMoeda >= 0) txt += " · " + moeda(l.reduce((s, r) => s + (Number(r[iMoeda]) || 0), 0));
     conta.textContent = txt;
@@ -873,25 +895,40 @@ function tabelaViva(colunas, linhas, vazio = "Nada por aqui.") {
   }
   if (iId >= 0) controles.append(novo("button", { class: "mini", type: "button", text: "Copiar IDs", onclick: () => { const ids = filtradas().map(r => r[iId]); copiar(ids.join("\n"), `${inteiro(ids.length)} IDs copiados.`); } }));
   controles.append(novo("button", { class: "mini", type: "button", title: "Baixa o que está filtrado na tela, para abrir no Excel", onclick: () => baixarPlanilha(colunas, filtradas()) }, icone("baixar", 15), "Baixar Excel"));
-  // Expandir (09/11/2026): a tabela ocupa a janela toda, com os mesmos filtros. Esc ou "Recolher" volta.
-  const expandir = novo("button", { class: "mini", type: "button", title: "Ver a tabela em tela cheia (Esc volta)", onclick: () => alternarExpandida(n, expandir) }, icone("expandir", 15), "Expandir");
-  controles.append(expandir);
   controles.append(conta);
   desenhar();
-  const n = novo("div", { class: "tabela-viva" }, controles, caixa);
+  const n = novo("div", { class: "tabela-viva" }, controles, caixa, puxadorDaTabela(caixa));
   n.redesenhar = desenhar;  // para mudar uma linha sem perder busca, filtros e ordem
   return n;
 }
-function alternarExpandida(caixa, botao) {
-  const abrir = !caixa.classList.contains("expandida");
-  document.querySelectorAll(".tabela-viva.expandida").forEach(c => c.classList.remove("expandida"));
-  caixa.classList.toggle("expandida", abrir);
-  document.body.classList.toggle("com-tabela-expandida", abrir);
-  limpar(botao, icone(abrir ? "recolher" : "expandir", 15), abrir ? "Recolher" : "Expandir");
-  if (abrir) {
-    const esc = e => { if (e.key === "Escape" && !el("ficha").open) { removeEventListener("keydown", esc); if (caixa.classList.contains("expandida")) alternarExpandida(caixa, botao); } };
-    addEventListener("keydown", esc);
-  }
+// Puxar a tabela pra baixo (09/11/2026, pedido do usuário): arrasta a alça da borda de baixo
+// e a tabela cresce na própria página; duplo clique mostra tudo / volta ao normal.
+// Com poucas linhas (até LINHAS_SEM_ROLAGEM) ela já aparece inteira, sem rolagem por dentro.
+const LINHAS_SEM_ROLAGEM = 30;
+function ajustarAlturaAuto(caixa, qtd) {
+  if (caixa.dataset.altura === "manual") return;
+  caixa.classList.toggle("inteira", qtd <= LINHAS_SEM_ROLAGEM);
+}
+function puxadorDaTabela(caixa) {
+  const alca = novo("div", { class: "puxador", role: "separator", "aria-label": "Arraste para aumentar a tabela; duplo clique mostra tudo", title: "Arraste para aumentar · duplo clique mostra tudo" }, novo("span"));
+  alca.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const y0 = e.clientY, h0 = caixa.getBoundingClientRect().height;
+    caixa.dataset.altura = "manual";
+    caixa.classList.remove("inteira");
+    alca.setPointerCapture(e.pointerId);
+    const mover = ev => { caixa.style.maxHeight = "none"; caixa.style.height = Math.max(160, h0 + ev.clientY - y0) + "px"; };
+    const soltar = () => { alca.removeEventListener("pointermove", mover); alca.removeEventListener("pointerup", soltar); };
+    alca.addEventListener("pointermove", mover);
+    alca.addEventListener("pointerup", soltar);
+  });
+  alca.addEventListener("dblclick", () => {
+    const tudo = !caixa.classList.contains("inteira") || caixa.style.height;
+    caixa.style.height = ""; caixa.style.maxHeight = "";
+    caixa.classList.toggle("inteira", !!tudo);
+    caixa.dataset.altura = tudo ? "manual" : "";
+  });
+  return alca;
 }
 function tabelaFixa(colunas, linhas) {
   return novo("div", { class: "tabela" }, novo("table", {},
