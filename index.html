@@ -442,6 +442,7 @@ const MODULOS = [
   ["busca", "Buscar pacote", "Pelo ID do pacote ou pelo nome do produto", "lupa"],
   ["fila", "Fila do Dia", "O que vira desconto ou prejuízo se ninguém agir", "lista"],
   ["perdidos", "Perdidos", "Investigar quem responde por cada perdido, por quinzena", "perigo"],
+  ["cruzamentos", "Cruzamentos", "Insucesso que depois foi entregue: justificativa a conferir", "alvo"],
   ["faltantes", "Faltantes", "A salvar, perdidos e recuperados", "caixa"],
   ["agregacao", "Agregação", "Pendências e agregado no dia seguinte", "camadas"],
   ["alertas", "Alertas", "Faltante caro ou suspeito", "sino"],
@@ -451,7 +452,7 @@ const MODULOS = [
   ["relatorio", "Relatório", "Resumo da semana para a diretoria", "documento"],
 ];
 const CREDITO = "Desenvolvido por Ruan Felisbino";
-const INTERNOS = ["alertas", "placar", "motoristas", "perdidos"];
+const INTERNOS = ["alertas", "placar", "motoristas", "perdidos", "cruzamentos"];
 const ESSENCIAIS = ["inicio", "busca", "fila", "faltantes", "agregacao"];
 const ICONES = {
   casa: "M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5",
@@ -746,7 +747,10 @@ const eNumerica = c => ["num", "moeda", "pct"].includes(c.tipo);
 // Planilha (.csv que o Excel abre direto): exatamente o que está filtrado na tela.
 function baixarPlanilha(colunas, linhas) {
   const txt = v => { const s = String(v ?? "").replace(/"/g, '""'); return /[;"\n]/.test(s) ? `"${s}"` : s; };
-  const valor = (v, c) => c.tipo === "selo" ? semEmoji(v) : (eNumerica(c) && typeof v === "number") ? String(v).replace(".", ",") : v;
+  // Injeção de fórmula: nome de produto é escrito pelo vendedor no ML; "=HIPERLINK(...)" viraria
+  // fórmula ao abrir no Excel. Texto que começa com = + - @ ganha um ' na frente (fica texto).
+  const semFormula = s => /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+  const valor = (v, c) => c.tipo === "selo" ? semEmoji(v) : (eNumerica(c) && typeof v === "number") ? String(v).replace(".", ",") : semFormula(String(v ?? ""));
   const corpo = [colunas.map(c => txt(c.t)).join(";"), ...linhas.map(r => colunas.map((c, i) => txt(valor(r[i], c))).join(";"))].join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿" + corpo], { type: "text/csv;charset=utf-8" }));
   const hoje = new Date().toLocaleDateString("sv-SE");  // AAAA-MM-DD no horário daqui (o toISOString é UTC: à noite virava o dia seguinte)
@@ -1236,6 +1240,33 @@ const TELAS = {
     };
     desenhar();
     r.append(novo("div", { class: "nota", text: "Uso interno. Perdido já é débito: o objetivo aqui é achar quem responde e repassar. A pista é ponto de partida, não prova." }), corpo);
+  },
+  cruzamentos(r, d) {
+    // Linha: [grupo, motivo, XPT, ID, insucesso, motorista do insucesso, entregue em, quem entregou, dias depois, outro/mesmo, peso]
+    const PESO = { Forte: "🔴 Forte", Conferir: "🟠 Conferir", Fraco: "⚪ Fraco" };
+    const l = d.lista, outro = l.filter(x => x[9] === "Outro motorista");
+    const conta = g => outro.filter(x => x[0] === g).length;
+    const casosDo = nome => l.filter(x => x[5] === nome && x[9] === "Outro motorista");
+    const fichaCasos = nome => abrirFicha(nome,
+      novo("p", { class: "suave", style: "margin:0;color:var(--muted)", text: "Insucessos deste motorista que outro motorista entregou depois. Clique no ID para ver a ficha e anotar." }),
+      tabelaFixa([{ t: "Peso", tipo: "selo" }, { t: "Motivo" }, { t: "ID", aoClicar: buscarId }, { t: "Insucesso" }, { t: "Entregue em" }, { t: "Quem entregou" }, { t: "Dias", tipo: "num" }],
+        casosDo(nome).map(x => [PESO[x[10]], x[1], x[3], x[4], x[6], x[7], x[8]])));
+    r.append(
+      novo("div", { class: "nota", text: `Uso interno. Entregues de ${(d.periodo || [])[0] || "-"} a ${(d.periodo || [])[1] || "-"}. Mesmo pacote: teve insucesso e depois foi entregue no mesmo endereço. É pista para conferir, não acusação.` }),
+      novo("div", { class: "numeros" },
+        numero("Fortes", inteiro(l.filter(x => x[10] === "Forte").length), "outro motorista entregou depois", "ruim"),
+        numero("Endereço ruim", inteiro(conta("Endereço ruim")), "mas foi entregue depois", "alerta"),
+        numero("Não visitado", inteiro(conta("Não visitado")), "entregue por outro", "alerta"),
+        numero("Palavra-chave", inteiro(conta("Palavra-chave")), "entregue por outro", "azul"),
+        numero("Ninguém / fechado", inteiro(conta("Ninguém / fechado")), "entregue por outro", "azul")),
+      cartao("Por motorista (insucesso entregue depois por outro)",
+        tabelaViva([{ t: "Motorista", aoClicar: fichaCasos }, { t: "XPT", filtro: true }, { t: "Insucessos no período", tipo: "num" }, { t: "Entregues depois por outro", tipo: "num" }, { t: "% do total", tipo: "pct" },
+          ...d.grupos.map(g => ({ t: g, tipo: "num" })), { t: "Fortes", tipo: "num" }], d.motoristas, "Nenhum caso no período.")),
+      cartao("Insucessos que depois foram entregues",
+        novo("p", { class: "suave", style: "margin:-6px 0 12px;color:var(--muted);font-size:14px", text: "Forte = endereço ruim, não visitado, área inacessível ou palavra-chave, e outro motorista entregou. Clique no ID para a ficha (dá para anotar quem responde)." }),
+        tabelaViva([{ t: "Peso", tipo: "selo", filtro: true }, { t: "Motivo", filtro: true }, { t: "XPT", filtro: true }, { t: "ID", aoClicar: buscarId }, { t: "Insucesso", tipo: "data" },
+          { t: "Motorista do insucesso" }, { t: "Entregue em" }, { t: "Quem entregou" }, { t: "Dias depois", tipo: "num" }, { t: "Entregue por", filtro: true }],
+          l.map(x => [PESO[x[10]], x[0], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]]), "Nenhum caso no período.")));
   },
   async faltantes(r, d) {
     if (INV === null) await carregarInvestigacoes();  // coluna "Quem responde" (anotações da equipe)
