@@ -443,6 +443,7 @@ const MODULOS = [
   ["fila", "Fila do Dia", "O que vira desconto ou prejuízo se ninguém agir", "lista"],
   ["perdidos", "Perdidos", "Investigar quem responde por cada perdido, por quinzena", "perigo"],
   ["cruzamentos", "Cruzamentos", "Insucesso que depois foi entregue: justificativa a conferir", "alvo"],
+  ["ofensores", "Ofensores", "Motoristas com mais insucesso que a média do XPT", "perigo"],
   ["faltantes", "Faltantes", "A salvar, perdidos e recuperados", "caixa"],
   ["agregacao", "Agregação", "Pendências e agregado no dia seguinte", "camadas"],
   ["alertas", "Alertas", "Faltante caro ou suspeito", "sino"],
@@ -452,7 +453,7 @@ const MODULOS = [
   ["relatorio", "Relatório", "Resumo da semana para a diretoria", "documento"],
 ];
 const CREDITO = "Desenvolvido por Ruan Felisbino";
-const INTERNOS = ["alertas", "placar", "motoristas", "perdidos", "cruzamentos"];
+const INTERNOS = ["alertas", "placar", "motoristas", "perdidos", "cruzamentos", "ofensores"];
 const ESSENCIAIS = ["inicio", "busca", "fila", "faltantes", "agregacao"];
 const ICONES = {
   casa: "M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5",
@@ -1240,6 +1241,38 @@ const TELAS = {
     };
     desenhar();
     r.append(novo("div", { class: "nota", text: "Uso interno. Perdido já é débito: o objetivo aqui é achar quem responde e repassar. A pista é ponto de partida, não prova." }), corpo);
+  },
+  ofensores(r, d) {
+    // Linha: [motorista, XPT, rotas, pacotes, entregues, insucessos, %, média XPT %, vezes a média, acima da média, ...grupos, fortes, pontos, sinais]
+    const l = d.lista, g = d.grupos, info = d.info || {}, n = 10 + g.length;
+    const comVolume = l.filter(x => x[3] >= info.minimo);
+    const ficha = nome => {
+      const x = l.find(y => y[0] === nome), casos = (d.fichas || {})[nome] || [];
+      abrirFicha(nome,
+        novo("div", { class: "numeros" },
+          numero("Insucesso", decimal(x[6]) + "%", `média do ${x[1]}: ${decimal(x[7])}%`, x[8] >= 2 ? "ruim" : "alerta"),
+          numero("Insucessos", inteiro(x[5]), `de ${inteiro(x[3])} pacotes em ${inteiro(x[2])} rotas`, "azul"),
+          numero("Acima da média", decimal(x[9]), "insucessos a mais que o normal do XPT", x[9] > 0 ? "ruim" : "bom"),
+          numero("Justificativas fortes", inteiro(x[n]), "entregue depois por outro", x[n] ? "ruim" : "")),
+        ...(x[n + 2] ? [novo("div", { class: "nota", text: x[n + 2] })] : []),
+        novo("div", {}, novo("h3", { text: "Motivos dos insucessos" }), partes(g.map((t, i) => [t, x[10 + i]]).filter(p => p[1]))),
+        novo("div", {}, novo("h3", { text: casos.length < x[5] ? `Últimos ${casos.length} insucessos` : "Insucessos" }),
+          tabelaFixa([{ t: "Dia", tipo: "data" }, { t: "Rota" }, { t: "ID", aoClicar: buscarId }, { t: "Motivo" }, { t: "Produto", quebra: true }],
+            casos.map(c => [c[0].split("-").reverse().join("/"), c[1], c[2], c[3], c[4]]))));
+    };
+    r.append(
+      novo("div", { class: "nota", text: `Uso interno. Rotas de ${(info.periodo || []).map(t => t.split("-").reverse().join("/")).join(" a ")}, ${inteiro(info.rotas)} com motorista identificado. Transferência não conta. Taxa comparada com a média do XPT do motorista. É pista para conferir, não prova.` }),
+      novo("div", { class: "numeros" },
+        numero("Acima de 2x a média", inteiro(comVolume.filter(x => x[8] >= 2).length), `motoristas com ${info.minimo}+ pacotes`, "ruim"),
+        numero("Com justificativa forte", inteiro(l.filter(x => x[n]).length), "insucesso entregue depois por outro", "alerta"),
+        numero("Insucessos acima da média", decimal(Math.round(comVolume.reduce((s, x) => s + Math.max(x[9], 0), 0))), "somando todos os motoristas", "azul"),
+        numero("Motoristas no período", inteiro(l.length), `${inteiro(comVolume.length)} com volume suficiente`, "")),
+      cartao("Ranking de ofensores",
+        novo("p", { class: "suave", style: "margin:-6px 0 12px;color:var(--muted);font-size:14px", text: "Pontos = insucessos acima da média do XPT + 3 por justificativa forte + 2 por faltando. Clique no nome para ver os insucessos dele." }),
+        tabelaViva([{ t: "Motorista", aoClicar: ficha }, { t: "XPT", filtro: true }, { t: "Rotas", tipo: "num" }, { t: "Pacotes", tipo: "num" }, { t: "Insucessos", tipo: "num" },
+          { t: "% insucesso", tipo: "pct" }, { t: "Média XPT %", tipo: "num" }, { t: "Vezes a média", tipo: "num" }, { t: "Acima da média", tipo: "num" },
+          ...g.map(t => ({ t, tipo: "num" })), { t: "Just. fortes", tipo: "num" }, { t: "Pontos", tipo: "num" }, { t: "Sinais", quebra: true }],
+          l.map(x => [x[0], x[1], x[2], x[3], x[5], x[6], x[7], x[8], x[9], ...x.slice(10, 10 + g.length), x[n], x[n + 1], x[n + 2]]), "Sem rotas com motorista no período.")));
   },
   cruzamentos(r, d) {
     // Linha: [grupo, motivo, XPT, ID, insucesso, motorista do insucesso, entregue em, quem entregou, dias depois, outro/mesmo, peso]
